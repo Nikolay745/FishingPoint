@@ -1,0 +1,232 @@
+package com.fishingpoints.data.local.database.initializer.catalog
+
+import com.fishingpoints.data.local.database.dao.BaitDao
+import com.fishingpoints.data.local.database.dao.FishDao
+import com.fishingpoints.data.local.database.initializer.core.fishByName
+import com.fishingpoints.data.local.database.initializer.core.warnMissingFish
+import com.fishingpoints.data.local.entity.Bait
+import com.fishingpoints.data.local.entity.BaitFishCrossRef
+import com.fishingpoints.data.local.enums.BaitType
+import com.fishingpoints.data.local.enums.Season
+import javax.inject.Inject
+
+internal data class InitialBait(
+    val bait: Bait,
+    val fishNames: List<String>
+)
+
+internal object BaitData {
+    val all: List<InitialBait> = listOf(
+        InitialBait(
+            bait = Bait(
+                name = "Червь навозный",
+                type = BaitType.NATURAL,
+                bestSeason = Season.ALL_YEAR,
+                description = "Универсальная наживка для большинства видов рыб. " +
+                        "Крупного червя можно насаживать чулком или разрезать на кусочки "
+            ),
+            fishNames = listOf("Лещ", "Карась", "Плотва")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Опарыш",
+                type = BaitType.NATURAL,
+                bestSeason = Season.ALL_YEAR,
+                description = "Отлично подходит для ловли плотвы, красноперки, леща, карася. Используйте 2-3 личинки на крючке."
+            ),
+            fishNames = listOf("Лещ", "Карась", "Плотва", "Красноперка")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Кузнечики, бабочки, майские жуки",
+                type = BaitType.NATURAL,
+                bestSeason = Season.SUMMER,
+                description = "Незаменимы при ловле поверху (на течении) голавля или язя"
+            ),
+            fishNames = listOf("Голавль")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Мотыль (личинка комара-звонца)",
+                type = BaitType.NATURAL,
+                bestSeason = Season.ALL_YEAR,
+                description = "Лучшая наживка для зимы. Требует аккуратного насаживания " +
+                        "(по 1-3 штуки чулком или колечком) из-за нежности тельца. " +
+                        "Окунь на него отлично ловится круглый год."
+            ),
+            fishNames = listOf("Окунь")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Личинка короеда (закорник)",
+                type = BaitType.NATURAL,
+                bestSeason = Season.ALL_YEAR,
+                description = """Актуальна по первому и последнему льду. Имеет мягкое светлое тельце. 
+                            Насаживается под головку на крючки с длинным цевьем """
+            ),
+            fishNames = listOf("Лещ", "Голавль", "Плотва")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Кукуруза консервированная",
+                type = BaitType.NATURAL,
+                bestSeason = Season.SUMMER,
+                description = "Лучшая наживка для карпа и карася в летний период. Также привлекает крупного леща."
+            ),
+            fishNames = listOf("Лещ", "Карась", "Карп", "Красноперка")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Суперпрочное тесто",
+                type = BaitType.NATURAL,
+                bestSeason = Season.SUMMER,
+                description = " Рецепт \n " +
+                        "    2 ст. ложки манки\n" +
+                        "    2 ст. ложки пшеничной муки\n" +
+                        "    1 ст. ложка кукурузной муки\n" +
+                        "    1 ч. ложка сахара\n" +
+                        "    1 ч. ложка растительного масла\n" +
+                        "    3–4 ст. ложки воды\n" +
+                        "\n" +
+                        "Приготовление:\n" +
+                        "    Смешай манку, муку, кукурузную муку и сахар.\n" +
+                        "    Добавляй воду небольшими порциями.\n" +
+                        "    Вымешивай 7–10 минут — тесто должно стать эластичным и тягучим.\n" +
+                        "    Добавь масло и ещё 2–3 минуты разомни руками.\n" +
+                        "    Положи в пакет и оставь на 30 минут.\n" +
+                        "    Перед рыбалкой ещё раз хорошо разомни.\n" +
+                        "\n" +
+                        "Как насаживать\n" +
+                        "\n" +
+                        "На фидерный крючок делай небольшой шарик 5–7 мм. Хорошо работает вариант, " +
+                        "когда тесто полностью закрывает крючок, но жало слегка выходит наружу.\n" +
+                        "\n" +
+                        "Чтобы оно держалось максимально долго, добавь ещё ½ чайной ложки манки и вымеси тесто до состояния жевательной резинки.\n" +
+                        "\n" +
+                        "Для карася сделай две насадки: одну обычную, вторую — с 1–2 каплями чеснока. На рыбалке быстро поймёшь, какая сегодня работает лучше. "
+            ),
+            fishNames = listOf("Лещ", "Карась", "Карп")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Тесто",
+                type = BaitType.NATURAL,
+                bestSeason = Season.SUMMER,
+                description = "Рецепт: \n" +
+                        "    3 ст. ложки пшеничной муки\n" +
+                        "    2 ст. ложки манки\n" +
+                        "    1 ст. ложка кукурузной муки или сухого молока\n" +
+                        "    1 ч. ложка сахара\n" +
+                        "    1 ч. ложка растительного масла\n" +
+                        "    вода — по необходимости\n" +
+                        "\n" +
+                        "Как приготовить:\n" +
+                        "\n" +
+                        "    Смешай муку, манку, сахар и сухой компонент.\n" +
+                        "    Понемногу добавляй воду, постоянно перемешивая.\n" +
+                        "    Вымеси 5–7 минут до эластичного состояния.\n" +
+                        "    Добавь масло и ещё немного вымеси.\n" +
+                        "    Заверни в пакет и оставь на 20–30 минут.\n" +
+                        "\n" +
+                        "Для фидера делай шарик примерно 5–8 мм. Если ловишь на пружину, тесто можно сделать более мягким и липким.\n" +
+                        "\n" +
+                        "\uD83D\uDCA1 Для карася: добавь каплю чесночного сока или ванили.\n" +
+                        "\uD83D\uDCA1 Для плотвы: хорошо работает сладкий вариант с ванилью.\n" +
+                        "\uD83D\uDCA1 Для краснопёрки: можно добавить немного мёда или сахара. "
+            ),
+            fishNames = listOf("Карась", "Плотва", "Красноперка")
+        ),
+
+        InitialBait(
+            bait = Bait(
+                name = "Чесночная мастырка",
+                type = BaitType.NATURAL,
+                bestSeason = Season.SUMMER,
+                description = " Рецепт \n" +
+                        "    1 стакан жёлтого колотого гороха;\n" +
+                        "    4 ст. л. манки;\n" +
+                        "    1 ст. л. подсолнечного масла;\n" +
+                        "    1 небольшой зубчик свежего чеснока.\n" +
+                        "Как приготовить\n" +
+                        "    Горох замочите на 2–3 часа и сварите до полного разваривания.\n" +
+                        "    Разомните его в однородное пюре.\n" +
+                        "    На слабом огне постепенно добавляйте манку, постоянно помешивая.\n" +
+                        "    Когда масса станет густой — снимите с огня.\n" +
+                        "    Добавьте масло.\n" +
+                        "    Когда мастырка остынет до тёплого состояния, натрите чеснок на мелкой тёрке или раздавите прессом и тщательно вмешайте.\n" +
+                        "    Дайте полежать 20–30 минут в закрытом пакете.\n"
+            ),
+            fishNames = listOf("Карась", "Плотва", "Красноперка")
+        ),
+
+        InitialBait(
+            bait =
+                Bait(
+                    name = "Блесна колеблющаяся",
+                    type = BaitType.ARTIFICIAL,
+                    bestSeason = Season.ALL_YEAR,
+                    description = "Эффективна для ловли щуки и окуня. Размер 5-7 см для средней рыбы."
+                ),
+            fishNames = listOf("Щука", "Окунь")
+        ),
+
+        InitialBait(
+            bait =
+                Bait(
+                    name = "Виброхвост",
+                    type = BaitType.ARTIFICIAL,
+                    bestSeason = Season.SUMMER,
+                    description = "Силиконовая приманка для ловли судака и щуки. Хорошо работает на джиг-головке."
+                ),
+            fishNames = listOf("Судак", "Щука")
+        ),
+
+        InitialBait(
+            bait =
+                Bait(
+                    name = "Воблеры",
+                    type = BaitType.ARTIFICIAL,
+                    bestSeason = Season.SUMMER,
+                    description = "Искусственные рыбки из пластика, обладающие собственной интересной «игрой» при проводке."
+                ),
+            fishNames = listOf("Щука", "Судак", "Окунь", "Голавль", "Жерех")
+        )
+    )
+
+}
+
+internal class BaitSeeder @Inject constructor(
+    private val baitDao: BaitDao,
+    private val fishDao: FishDao
+) {
+    suspend fun seedIfEmpty() {
+        if (baitDao.getBaitCount() != 0) return
+
+        val fishMap = fishDao.fishByName()
+
+        BaitData.all.forEach { initialBait ->
+            val baitId = baitDao.insertBait(initialBait.bait)
+
+            val crossRefs = initialBait.fishNames.mapNotNull { fishName ->
+                val fish = fishMap[fishName]
+                if (fish == null) {
+                    warnMissingFish(fishName, "наживки '${initialBait.bait.name}'")
+                    null
+                } else {
+                    BaitFishCrossRef(baitId = baitId, fishId = fish.id)
+                }
+            }
+
+            if (crossRefs.isNotEmpty()) {
+                baitDao.insertBaitFishCrossRefs(crossRefs)
+            }
+        }
+    }
+}

@@ -42,6 +42,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
+            // My first change with Git
+
             val themeViewModel: AppThemeViewModel = hiltViewModel(this)
             val themeMode by themeViewModel.themeMode.collectAsState()
             FishingPointsTheme(

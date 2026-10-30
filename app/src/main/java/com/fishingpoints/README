@@ -14,7 +14,7 @@
 
 
 в local.properties  необходимо прописать Ваш ключ для получения погоды https://openweathermap.org/
-WEATHER_API_KEY=********************************
+WEATHER_API_KEY=YOUR_OPENWEATHERMAP_API_KEY
 
 
 

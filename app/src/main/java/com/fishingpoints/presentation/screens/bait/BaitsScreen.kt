@@ -161,59 +161,6 @@ fun BaitsScreen(
 
                             }
                             // Выпадающее меню (три точки)
-//                            Box {
-//                                IconButton(
-//                                    onClick = {
-//                                        expandedItemId =
-//                                            if (expandedItemId == baitWithFish.bait.id) null else baitWithFish.bait.id
-//                                    }
-//                                ) {
-//                                    Icon(
-//                                        Icons.Default.MoreVert,
-//                                        contentDescription = "Дополнительные действия"
-//                                    )
-//                                }
-//
-//                                DropdownMenu(
-//                                    expanded = expandedItemId == baitWithFish.bait.id,
-//                                    onDismissRequest = {
-//                                        expandedItemId = null
-//                                    }
-//                                ) {
-//                                    // Пункт "Редактировать"
-//                                    DropdownMenuItem(
-//                                        text = { Text("Редактировать") },
-//                                        onClick = {
-//                                            expandedItemId = null
-//                                            editingBait = baitWithFish.bait
-//                                            showDialog = true
-//                                        }
-//                                    )
-//
-//                                    HorizontalDivider(
-//                                        Modifier,
-//                                        DividerDefaults.Thickness,
-//                                        DividerDefaults.color
-//                                    )
-//
-//                                    // Пункт "Удалить"
-//                                    DropdownMenuItem(
-//                                        text = {
-//                                            Text(
-//                                                "Удалить",
-//                                                color = MaterialTheme.colorScheme.error
-//                                            )
-//                                        },
-//                                        onClick = {
-//                                            expandedItemId = null
-//                                            baitToDelete = baitWithFish.bait
-//                                            showDeleteDialog = true
-//                                        }
-//                                    )
-//
-//                                }
-//                            }
-
                             Box {
                                 IconButton(
                                     onClick = {

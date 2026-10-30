@@ -20,12 +20,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.fishingpoints.data.local.entity.Bait
+import com.fishingpoints.data.local.entity.BaitWithFish
+import com.fishingpoints.presentation.screens.bait.BaitInfoDialog
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.BaitCard
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.FishInfoCard
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.InfoCard
@@ -85,6 +91,7 @@ private fun FishDetailContent(
     navController: NavController
 ) {
     val fish = state.fish ?: return
+    var selectedBait by remember { mutableStateOf<Bait?>(null) }
 
     Scaffold(
         topBar = {
@@ -141,13 +148,37 @@ private fun FishDetailContent(
                     }
                 }
             }
+//            if (state.baits.isNotEmpty()) {
+//                item {
+//                    InfoCard("🪱 Рекомендуемые насадки") {
+////                        state.baits.forEach { BaitCard(it) }
+//                        state.baits.forEach { bait ->
+//                            BaitCard(
+//                                bait = bait,
+//                                onClick = {
+//                                    navController.navigate("bait_detail/${bait.id}")
+//                                }
+//                            )
+//                        }
+//
+//                    }
+//                }
+//            }
             if (state.baits.isNotEmpty()) {
                 item {
                     InfoCard("🪱 Рекомендуемые насадки") {
-                        state.baits.forEach { BaitCard(it) }
+                        state.baits.forEach { bait ->
+                            BaitCard(
+                                bait = bait,
+                                onClick = {
+                                    selectedBait = bait
+                                }
+                            )
+                        }
                     }
                 }
             }
+
 
             fish.adviceFromFishermen?.takeIf { it.isNotBlank() }?.let { advice ->
                 item {
@@ -158,6 +189,19 @@ private fun FishDetailContent(
             }
         }
     }
+    selectedBait?.let { bait ->
+
+        BaitInfoDialog(
+            baitWithFish = BaitWithFish(
+                bait = bait,
+                fish = listOf(fish)
+            ),
+            onDismiss = {
+                selectedBait = null
+            }
+        )
+    }
+
 }
 
 @Composable

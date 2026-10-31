@@ -165,6 +165,8 @@ fun FishingGuideApp(themeViewModel: AppThemeViewModel) {
                 WaterTemperatureSettingsScreen(navController = navController)
             }
 
+
+
             composable("bait") {
                 BaitsScreen(
                     navController = navController,

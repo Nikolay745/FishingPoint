@@ -46,7 +46,9 @@ class FishingAnalyticsService @Inject constructor(
                 ?.description
                 ?: "Нет данных",
             recommendation = "",
-            biteRating = 0.0
+            biteRating = 0.0,
+            weatherId = current.weather.firstOrNull()?.id ?: 0
+
         )
 
         val season =

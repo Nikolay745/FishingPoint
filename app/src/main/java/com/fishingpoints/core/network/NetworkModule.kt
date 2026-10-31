@@ -1,5 +1,6 @@
 package com.fishingpoints.core.network
 
+import com.fishingpoints.BuildConfig.WEATHER_API_KEY
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +16,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
     private const val BASE_URL = "https://api.openweathermap.org/data/2.5/"
-    private const val API_KEY = "faa22bede2873af9fb9f7b0912bfa9df" // Замените на реальный ключ
+    private const val API_KEY = WEATHER_API_KEY    // Замените на реальный ключ
 
     @Provides
     @Singleton

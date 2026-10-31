@@ -70,6 +70,8 @@ sealed class DrawerScreen(val route: String, val title: String, val icon: @Compo
 
     object Equipment : DrawerScreen("equipment", "🎒 Экипировка", { })
 
+
+
 }
 
 data class DrawerItemUi(

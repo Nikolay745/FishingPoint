@@ -29,7 +29,9 @@ data class WeatherResponse(
         )
 }
 
-data class Coord(  val lon: Double? = null,  val lat: Double? = null)
+data class Coord(
+    val lon: Double? = null,
+    val lat: Double? = null)
 
 data class MainWeather(
     val temp: Double? = null,
@@ -68,7 +70,8 @@ data class Sys(
 
 data class WeatherDescription(val id: Int, val main: String, val description: String, val icon: String)
 
-data class CurrentWeather(    // Текущая погода
+// Текущая погода
+data class CurrentWeather(
     val temp: Double,
     val pressure: Int,
     val windSpeed: Double,
@@ -77,10 +80,16 @@ data class CurrentWeather(    // Текущая погода
     val weather: List<WeatherDescription>
 )
 
-data class DailyWeather(val dt: Int, val temp: Temp, val pressure: Int, val windSpeed: Double,  // Ежедневная погода
-                        val weather: List<WeatherDescription>)
+// Ежедневная погода
+data class DailyWeather(
+    val dt: Int,
+    val temp: Temp,
+    val pressure: Int,
+    val windSpeed: Double,
+    val weather: List<WeatherDescription>)
 
-data class Temp(                    // Временный
+// Временный
+data class Temp(
     val day: Double,
     val min: Double,
     val max: Double
@@ -97,7 +106,8 @@ data class FishingWeather(
     val cloudiness: Int,                // облачность
     val precipitation: String,         // осадок
     val recommendation: String,         // рекомендация
-    val biteRating: Double              // погода, оценивающая клев
+    val biteRating: Double,              // погода, оценивающая клев
+    val weatherId: Int = 800
 )
 
 enum class PressureTrend {

@@ -14,13 +14,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.Dehaze
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material.icons.filled.Water
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
@@ -269,6 +273,7 @@ import java.util.Locale
 //        }
 //    }
 //}
+
 @SuppressLint("DefaultLocale")
 @Composable
 fun WeatherCard(
@@ -310,7 +315,7 @@ fun WeatherCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.WbSunny,
+                        imageVector = getWeatherIcon(weather.weatherId),
                         contentDescription = null,
                         tint = colors.onPrimaryContainer,
                         modifier = Modifier.size(25.dp)
@@ -323,7 +328,7 @@ fun WeatherCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Погода",
+                        text = "Текущая погода",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -690,3 +695,19 @@ private fun WeatherMetric(
         }
     }
 }
+
+private fun getWeatherIcon(weatherId: Int): ImageVector {
+    return when (weatherId) {
+        in 200..232 -> Icons.Default.Thunderstorm
+        in 300..321 -> Icons.Default.Cloud
+        in 500..531 -> Icons.Default.WaterDrop
+        in 600..622 -> Icons.Default.AcUnit
+        in 701..781 -> Icons.Default.Dehaze
+        800 -> Icons.Default.WbSunny
+        801 -> Icons.Default.CloudQueue
+        in 802..804 -> Icons.Default.Cloud
+        else -> Icons.Default.Cloud
+    }
+}
+
+

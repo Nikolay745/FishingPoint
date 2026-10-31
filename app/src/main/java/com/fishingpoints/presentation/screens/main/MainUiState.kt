@@ -3,6 +3,7 @@ package com.fishingpoints.presentation.screens.main
 import com.fishingpoints.core.network.FishingForecast
 import com.fishingpoints.data.local.entity.Fish
 import com.fishingpoints.data.local.entity.LocationEntity
+import com.fishingpoints.data.models.DailyFishingForecast
 import com.fishingpoints.data.models.FishingWeather
 import com.fishingpoints.domain.lunar.LunarInfo
 import com.fishingpoints.presentation.screens.main.model.BestFishingTime
@@ -42,6 +43,17 @@ data class MainUiState(
     // =========================================
 
     val weather: FishingWeather? = null,
+
+    // =========================================
+// Прогноз погоды на 5 дней
+// =========================================
+
+    val dailyFishingForecast: List<DailyFishingForecast> = emptyList(),
+
+    val isDailyForecastLoading: Boolean = false,
+
+    val dailyForecastError: String? = null,
+
 
     // =========================================
     // Прогноз рыбалки

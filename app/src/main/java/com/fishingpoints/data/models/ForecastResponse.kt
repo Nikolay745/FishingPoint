@@ -1,6 +1,7 @@
 package com.fishingpoints.data.models
 
 import com.google.gson.annotations.SerializedName
+import java.time.LocalDate
 
 data class ForecastResponse(
     @SerializedName("list") val list: List<ForecastItem>,
@@ -38,10 +39,30 @@ data class ForecastWind(
 
 data class City(
     @SerializedName("name") val name: String,
-    @SerializedName("country") val country: String
+    @SerializedName("country") val country: String,
+    @SerializedName("timezone") val timezone: Int = 0
 )
 
 data class ForecastClouds(
     @SerializedName("all")
     val all: Int
+)
+
+data class DailyFishingForecast(
+    val date: LocalDate,
+
+    val temperatureMin: Double,
+    val temperatureMax: Double,
+
+    val weatherId: Int,
+
+    val windSpeed: Double,
+    val pressure: Int,
+    val cloudiness: Int,
+
+    val precipitation: String,
+
+    val biteRating: Double,
+
+    val recommendation: String
 )

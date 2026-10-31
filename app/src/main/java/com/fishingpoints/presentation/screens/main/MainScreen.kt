@@ -51,9 +51,11 @@ import com.fishingpoints.core.network.FishingForecast
 import com.fishingpoints.data.models.FishingWeather
 import com.fishingpoints.domain.permissions.LocationPermissionScreen
 import com.fishingpoints.domain.permissions.rememberLocationPermissionState
+import com.fishingpoints.presentation.screens.main.cards.AdditionalInformationCard
 import com.fishingpoints.presentation.screens.main.cards.BestTimesCard
 import com.fishingpoints.presentation.screens.main.cards.ConditionsTextCard
 import com.fishingpoints.presentation.screens.main.cards.FishRecommendationCard
+import com.fishingpoints.presentation.screens.main.cards.FishingForecastCard
 import com.fishingpoints.presentation.screens.main.cards.LunarCard
 import com.fishingpoints.presentation.screens.main.cards.RecommendationsCard
 import com.fishingpoints.presentation.screens.main.cards.TimeSeasonCard
@@ -186,7 +188,8 @@ fun MainScreen(
                             vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Прогноз Погоды
+
+                        // 1. Текущая погода
                         uiState.weather?.let { weather ->
                             item {
                                 WeatherCard(
@@ -199,39 +202,47 @@ fun MainScreen(
                                     })
                             }
                         }
-                        // Лунная информация
-                        uiState.lunarInfo?.let { lunar ->
-                            item { LunarCard(lunarInfo = lunar) }
-                        }
-                        // Время и сезон
-                        item {
-                            TimeSeasonCard(
-                                timeRecommendation = uiState.dailyTips.timeRecommendation,
-                                seasonRecommendation = uiState.dailyTips.seasonRecommendation
-                            )
-                        }
 
-                        // Все общие временные интервалы.
+                        // 2. Компактный прогноз на 5 дней
                         item {
-                            FishingTimesChart(
-                                times = uiState.allFishingTimes
-                            )
-                        }
+                        FishingForecastCard(
+                            forecasts = uiState.dailyFishingForecast,
+                            temperatureUnit = temperatureUnit
+                        )
+                    }
+//                        // Лунная информация
+//                        uiState.lunarInfo?.let { lunar ->
+//                            item { LunarCard(lunarInfo = lunar) }
+//                        }
+//                        // Время и сезон
+//                        item {
+//                            TimeSeasonCard(
+//                                timeRecommendation = uiState.dailyTips.timeRecommendation,
+//                                seasonRecommendation = uiState.dailyTips.seasonRecommendation
+//                            )
+//                        }
+//
+//                        // Все общие временные интервалы.
+//                        item {
+//                            FishingTimesChart(
+//                                times = uiState.allFishingTimes
+//                            )
+//                        }
 
-                        // Текущие условия
-                        forecast?.let { fishingForecast ->
-                            uiState.weather?.let { weather ->
-                                item {
-                                    ConditionsTextCard(
-                                        text = buildConditionsText(
-                                            forecast = fishingForecast,
-                                            weather = weather
-                                        )
-                                    )
-                                }
-                            }
-                        }
                         // Лучшее время для рыбалки
+//                        forecast?.let { fishingForecast ->
+//                            uiState.weather?.let { weather ->
+//                                item {
+//                                    ConditionsTextCard(
+//                                        text = buildConditionsText(
+//                                            forecast = fishingForecast,
+//                                            weather = weather
+//                                        )
+//                                    )
+//                                }
+//                            }
+//                        }
+                        // 3. Лучшее время для рыбалки
                         forecast?.let { fishingForecast ->
                             if (fishingForecast.bestTimes.isNotEmpty()) {
                                 item {
@@ -243,30 +254,28 @@ fun MainScreen(
                         }
 
                         // Рекомендации
-                        item {
-                            RecommendationsCard(
-                                tackleRecommendations = uiState.dailyTips.tackleRecommendations,
-                                baitRecommendations = uiState.dailyTips.baitRecommendations,
-                                groundbaitRecommendation = uiState.dailyTips.groundbaitRecommendation,
-                                attractantRecommendation = uiState.dailyTips.attractantRecommendation
-                            )
-                        }
+//                        item {
+//                            RecommendationsCard(
+//                                tackleRecommendations = uiState.dailyTips.tackleRecommendations,
+//                                baitRecommendations = uiState.dailyTips.baitRecommendations,
+//                                groundbaitRecommendation = uiState.dailyTips.groundbaitRecommendation,
+//                                attractantRecommendation = uiState.dailyTips.attractantRecommendation
+//                            )
+//                        }
                         // Совет дня
-                        if (uiState.dailyTips.tipOfTheDay.isNotBlank()) {
-                            item {
-                                TipCard(
-                                    tip = uiState.dailyTips.tipOfTheDay
-                                )
-                            }
-                        }
+//                        if (uiState.dailyTips.tipOfTheDay.isNotBlank()) {
+//                            item {
+//                                TipCard(
+//                                    tip = uiState.dailyTips.tipOfTheDay
+//                                )
+//                            }
+//                        }
 
-                        // Рекомендованные рыбы.
+                        // 4. Рекомендуемые рыбы
                         if (uiState.recommendedFish.isNotEmpty()) {
 
                             item {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
+
                                     Text(
                                         text = "Рекомендуемые рыбы",
                                         style = MaterialTheme.typography.titleLarge,
@@ -279,7 +288,7 @@ fun MainScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                            }
+
 
 
                             items(
@@ -296,9 +305,17 @@ fun MainScreen(
                                 )
                             }
                         }
+
+                        // 5. Дополнительная информация
+                        item {
+                            AdditionalInformationCard(
+                                uiState = uiState
+                            )
+                        }
+                    }
                     }
                 }
-            }
+//            }
 
             // LOADING OVERLAY
             if (isLoading) {

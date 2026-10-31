@@ -696,7 +696,7 @@ private fun WeatherMetric(
     }
 }
 
-private fun getWeatherIcon(weatherId: Int): ImageVector {
+fun getWeatherIcon(weatherId: Int): ImageVector {
     return when (weatherId) {
         in 200..232 -> Icons.Default.Thunderstorm
         in 300..321 -> Icons.Default.Cloud

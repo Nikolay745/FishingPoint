@@ -13,6 +13,7 @@ import com.fishingpoints.core.location.LocationResult
 import com.fishingpoints.core.network.FishingForecast
 import com.fishingpoints.core.network.FishingService
 import com.fishingpoints.data.local.entity.LocationEntity
+import com.fishingpoints.data.models.DailyFishingForecast
 import com.fishingpoints.data.models.FishingWeather
 import com.fishingpoints.data.repository.FishRepository
 import com.fishingpoints.data.repository.WeatherRepository
@@ -159,8 +160,11 @@ class MainViewModel @Inject constructor(
                         copy(
                             appState = AppState.Error(userMessage),
                             isFishingForecastLoading = false,
-                            fishingForecastError = userMessage
+                            fishingForecastError = userMessage,
+                            isDailyForecastLoading = false,
+                            dailyForecastError = userMessage
                         )
+
                     }
 
                     // Здесь можно добавить логирование исходной ошибки.
@@ -515,13 +519,22 @@ class MainViewModel @Inject constructor(
     ) {
         ensureCurrentRequest(requestId)
         setAppState(AppState.LoadingWeather)
-
+//
+//        updateState {
+//            copy(
+//                isFishingForecastLoading = true,
+//                fishingForecastError = null
+//            )
+//        }
         updateState {
             copy(
                 isFishingForecastLoading = true,
-                fishingForecastError = null
+                fishingForecastError = null,
+                isDailyForecastLoading = true,
+                dailyForecastError = null
             )
         }
+
 
         // 1. Текущая погода.
         val current = weatherRepository.getCurrentWeather(
@@ -538,6 +551,15 @@ class MainViewModel @Inject constructor(
         )
 
         ensureCurrentRequest(requestId)
+
+        // Прогноз погоды на 5 дней
+        val dailyFishingForecast =
+            fishingAnalyticsService.analyzeFishingForecast(
+                forecastResponse = weatherForecast
+            )
+
+        ensureCurrentRequest(requestId)
+
 
         // 3. Текущие дата и время в часовом поясе локации.
         val now = fishingCalendar.now(location)
@@ -583,6 +605,7 @@ class MainViewModel @Inject constructor(
             location = location,
             fishingWeather = fishingWeather,
             fishingForecast = fishingForecast,
+            dailyFishingForecast = dailyFishingForecast,
             allTimes = allTimes,
             requestId = requestId
         )
@@ -609,7 +632,8 @@ class MainViewModel @Inject constructor(
                 ?: createDefaultLocation()
             loadFullForecast(
                 location = location,
-                requestId = requestId
+                requestId = requestId,
+
             )
             return
         }
@@ -627,12 +651,17 @@ class MainViewModel @Inject constructor(
                 currentResponse = current,
                 forecastResponse = forecast,
                 useRealWaterTemp = enabled,
-                realWaterTemp =
-                    weatherRepository.getRealWaterTemperature(),
+                realWaterTemp = weatherRepository.getRealWaterTemperature(),
                 date = localDate
             )
 
+        val dailyFishingForecast =
+            fishingAnalyticsService.analyzeFishingForecast(
+                forecastResponse = forecast
+            )
+
         ensureCurrentRequest(requestId)
+
 
         // Пересчёт прогноза рыбалки.
         val fishingForecast =
@@ -658,7 +687,7 @@ class MainViewModel @Inject constructor(
             location = location,
             fishingWeather = fishingWeather,
             fishingForecast = fishingForecast,
-
+            dailyFishingForecast = dailyFishingForecast,
             allTimes = allTimes,
             requestId = requestId
         )
@@ -672,6 +701,7 @@ class MainViewModel @Inject constructor(
         location: LocationEntity,
         fishingWeather: FishingWeather,
         fishingForecast: FishingForecast,
+        dailyFishingForecast: List<DailyFishingForecast>,
         allTimes: List<BestFishingTime>,
         requestId: Long
     ) {
@@ -737,8 +767,12 @@ class MainViewModel @Inject constructor(
                 allFishingTimes = allTimes,
                 isFishingForecastLoading = false,
                 fishingForecastError = null,
-                appState = AppState.Ready
-            )
+                appState = AppState.Ready,
+                dailyFishingForecast = dailyFishingForecast,
+                isDailyForecastLoading = false,
+                dailyForecastError = null,
+
+                )
         }
     }
 

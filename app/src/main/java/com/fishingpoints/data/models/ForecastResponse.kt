@@ -57,6 +57,8 @@ data class DailyFishingForecast(
     val weatherId: Int,
 
     val windSpeed: Double,
+    val windDirection: Int = 0,
+
     val pressure: Int,
     val cloudiness: Int,
 

@@ -12,6 +12,7 @@ import com.fishingpoints.core.location.LocationProvider
 import com.fishingpoints.core.location.LocationResult
 import com.fishingpoints.core.network.FishingForecast
 import com.fishingpoints.core.network.FishingService
+import com.fishingpoints.data.local.entity.Fish
 import com.fishingpoints.data.local.entity.LocationEntity
 import com.fishingpoints.data.models.DailyFishingForecast
 import com.fishingpoints.data.models.FishingWeather
@@ -19,6 +20,9 @@ import com.fishingpoints.data.repository.FishRepository
 import com.fishingpoints.data.repository.WeatherRepository
 import com.fishingpoints.domain.lunar.LunarCalendar
 import com.fishingpoints.domain.lunar.LunarInfo
+import com.fishingpoints.domain.recommendation.adviceToDay.FishingTipContext
+import com.fishingpoints.domain.recommendation.adviceToDay.FishingTipEngine
+import com.fishingpoints.domain.recommendation.adviceToDay.FishingTipResult
 import com.fishingpoints.domain.recommendation.bait.BaitRecommendationService
 import com.fishingpoints.domain.recommendation.season.SeasonRecommendationService
 import com.fishingpoints.domain.recommendation.tackle.TackleRecommendationService
@@ -27,6 +31,7 @@ import com.fishingpoints.domain.service.FishingAnalyticsService
 import com.fishingpoints.domain.service.TipsGenerator
 import com.fishingpoints.domain.utils.FishingCalendar
 import com.fishingpoints.presentation.screens.main.model.BestFishingTime
+import com.fishingpoints.presentation.screens.main.model.FishForecastRecommendation
 import com.fishingpoints.presentation.screens.main.model.FishForecastService
 import com.fishingpoints.presentation.screens.settings.TemperatureUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -80,7 +85,7 @@ class MainViewModel @Inject constructor(
     private val seasonRecommendationService: SeasonRecommendationService,
     private val tackleRecommendationService: TackleRecommendationService,
     private val baitRecommendation: BaitRecommendationService,
-    private val personalizedTipService: PersonalizedTipService,
+    private val fishingTipEngine: FishingTipEngine,
     private val lunarCalendar: LunarCalendar,
     private val fishingCalendar: FishingCalendar,
     private val clock: Clock,
@@ -519,13 +524,7 @@ class MainViewModel @Inject constructor(
     ) {
         ensureCurrentRequest(requestId)
         setAppState(AppState.LoadingWeather)
-//
-//        updateState {
-//            copy(
-//                isFishingForecastLoading = true,
-//                fishingForecastError = null
-//            )
-//        }
+
         updateState {
             copy(
                 isFishingForecastLoading = true,
@@ -707,30 +706,24 @@ class MainViewModel @Inject constructor(
     ) {
 
         ensureCurrentRequest(requestId)
-
-        // Текущие дата и время.
+// 1. Текущие дата и время.
         val now = fishingCalendar.now(location)
         val localDate = now.toLocalDate()
 
-        // 1. Лунная информация.
+// 2. Лунная информация.
         val lunarInfo = lunarCalendar.getLunarInfo(localDate)
-        ensureCurrentRequest(requestId)
-
-        // 2. Дневные рекомендации.
-        val dailyTips = buildDailyTips(
-            weather = fishingWeather,
-            now = now,
-            lunarInfo = lunarInfo
-        )
 
         ensureCurrentRequest(requestId)
 
+// 3. Сезон и время суток.
         val season = fishingCalendar.getSeason(localDate)
+
         val timeOfDay = fishingCalendar.getTimeOfDay(
             location = location,
             dateTime = now
         )
 
+// 4. Получаем рекомендованные виды рыб.
         val fish = fishRepository.getRecommendedFish(
             season = season,
             timeOfDay = timeOfDay,
@@ -740,8 +733,9 @@ class MainViewModel @Inject constructor(
 
         ensureCurrentRequest(requestId)
 
-        // 5. Рассчитываем индивидуальный прогноз для каждой рыбы.
+// 5. Индивидуальный прогноз для каждой рыбы.
         val fishForecasts = fish.map { fishItem ->
+
             fishForecastService.calculate(
                 fish = fishItem,
                 weather = fishingWeather,
@@ -751,9 +745,34 @@ class MainViewModel @Inject constructor(
                 date = localDate,
                 allTimes = allTimes
             )
+
         }.sortedByDescending { it.rating }
 
+        // Оставляем только перспективные виды рыб.
+        val recommendedFishIds = fishForecasts
+            .filter { it.rating >= 3.0 }
+            .map { it.fishId }
+            .toSet()
+
+        val recommendedFish = fish.filter {
+            it.id in recommendedFishIds
+        }
+
         ensureCurrentRequest(requestId)
+
+// 6. Формируем один персонализированный совет.
+        val dailyTips = buildDailyTips(
+            weather = fishingWeather,
+            now = now,
+            lunarInfo = lunarInfo,
+            fishingForecast = fishingForecast,
+            fish = fish,
+            fishForecasts = fishForecasts
+        )
+
+        ensureCurrentRequest(requestId)
+
+
 
         // 4. Обновление UI.
         updateState {
@@ -762,7 +781,7 @@ class MainViewModel @Inject constructor(
                 fishingForecast = fishingForecast,
                 lunarInfo = lunarInfo,
                 dailyTips = dailyTips,
-                recommendedFish = fish,
+                recommendedFish = recommendedFish,
                 fishForecasts = fishForecasts,
                 allFishingTimes = allTimes,
                 isFishingForecastLoading = false,
@@ -777,30 +796,55 @@ class MainViewModel @Inject constructor(
     }
 
     // ============================================================
-    // DAILY TIPS
+    // Построение дневных рекомендаций.
     // ============================================================
-    /**     * Построение дневных рекомендаций.     */
+
     private fun buildDailyTips(
         weather: FishingWeather,
         now: ZonedDateTime,
-        lunarInfo: LunarInfo
+        lunarInfo: LunarInfo,
+        fishingForecast: FishingForecast,
+        fish: List<Fish>,
+        fishForecasts: List<FishForecastRecommendation>
     ): DailyTips {
 
+        val tipContext = FishingTipContext(
+            weather = weather,
+            lunarInfo = lunarInfo,
+            fishingForecast = fishingForecast,
+            fish = fish,
+            fishForecasts = fishForecasts
+        )
+
         return DailyTips(
-            timeRecommendation = tipsGenerator.getTimeOfDayRecommendation(now.hour),
-            seasonRecommendation = seasonRecommendationService.getSeasonRecommendation(now.month),
-            tackleRecommendations = tackleRecommendationService.getTackleRecommendations(weather),
-            baitRecommendations = baitRecommendation.getBaitRecommendations(weather),
-            groundbaitRecommendation = tipsGenerator.getGroundbaitRecommendations(weather),
-            attractantRecommendation = tipsGenerator.getAttractantRecommendations(weather),
-            tipOfTheDay = personalizedTipService.getPersonalizedTip(weather, lunarInfo)
+            timeRecommendation =
+                tipsGenerator.getTimeOfDayRecommendation(now.hour),
+
+            seasonRecommendation =
+                seasonRecommendationService.getSeasonRecommendation(now.month),
+
+            tackleRecommendations =
+                tackleRecommendationService.getTackleRecommendations(weather),
+
+            baitRecommendations =
+                baitRecommendation.getBaitRecommendations(weather),
+
+            groundbaitRecommendation =
+                tipsGenerator.getGroundbaitRecommendations(weather),
+
+            attractantRecommendation =
+                tipsGenerator.getAttractantRecommendations(weather),
+
+            tipOfTheDay = fishingTipEngine.generate(tipContext)
         )
     }
 
+
+
     // ============================================================
-    // LUNAR INFORMATION
+    // * Обновление лунной информации при инициализации.
     // ============================================================
-    /**     * Обновление лунной информации при инициализации.     */
+
     private fun updateLunarInfo() {
         val today = LocalDate.now(clock)
 
@@ -812,9 +856,9 @@ class MainViewModel @Inject constructor(
     }
 
     // ============================================================
-    // STATE HELPERS
+    //  Установка состояния приложения.
     // ============================================================
-    /**     * Установка состояния приложения.     */
+
     private fun setAppState(state: AppState) {
         updateState {
             copy(appState = state)
@@ -829,6 +873,8 @@ class MainViewModel @Inject constructor(
             currentState.block()
         }
     }
+
+
 }
 
 /**  * Дневные советы  */
@@ -839,5 +885,6 @@ data class DailyTips(
     val baitRecommendations: List<String> = emptyList(),
     val groundbaitRecommendation: String = "",
     val attractantRecommendation: String = "",
-    val tipOfTheDay: String = ""
+    val tipOfTheDay: FishingTipResult? = null
+
 )

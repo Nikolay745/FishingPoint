@@ -186,14 +186,14 @@ fun LocationScreen(
                                     text = {
                                         Text(
                                             text = "Удалить",
-                                            color = Color.Red
+                                            color = MaterialTheme.colorScheme.error
                                         )
                                     },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.Delete,
                                             contentDescription = null,
-                                            tint = Color.Red
+                                            tint = MaterialTheme.colorScheme.error
                                         )
                                     },
                                     onClick = {

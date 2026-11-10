@@ -1,6 +1,5 @@
 package com.fishingpoints.presentation.screens.main.cards
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,54 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fishingpoints.core.utils.FishImage
 import com.fishingpoints.data.local.entity.Fish
-//
-//@Composable
-//fun FishRecommendationCard(
-//    fish: Fish,
-//    onClick: () -> Unit
-//) {
-//    Card(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .clickable { onClick() },
-//        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-//    ) {
-//        Row(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(12.dp),
-//            horizontalArrangement = Arrangement.SpaceBetween,
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Column(modifier = Modifier.weight(1f)) {
-//                Text(
-//                    text = "🐟 ${fish.name}",
-//                    style = MaterialTheme.typography.titleMedium,
-//                    fontWeight = FontWeight.Bold
-//                )
-//
-//                Text(
-//                    text = fish.description
-//                        ?.let { description ->
-//                            if (description.length > 50) {
-//                                description.take(50) + "..."
-//                            } else {
-//                                description
-//                            }
-//                        }
-//                        .orEmpty(),
-//                    style = MaterialTheme.typography.bodySmall,
-//                    maxLines = 2
-//                )
-//            }
-//            Icon(
-//                Icons.Default.ChevronRight,
-//                contentDescription = null,
-//                tint = MaterialTheme.colorScheme.primary
-//            )
-//        }
-//    }
-//}
+
 @Composable
 fun FishRecommendationCard(
     fish: Fish,

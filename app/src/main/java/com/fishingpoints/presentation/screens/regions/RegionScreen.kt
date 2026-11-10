@@ -144,7 +144,7 @@ fun RegionScreen(
                                     text = {
                                         Text(
                                             "Удалить",
-                                            color = Color.Red
+                                            color = MaterialTheme.colorScheme.error
                                         )
                                     },
                                     leadingIcon = {

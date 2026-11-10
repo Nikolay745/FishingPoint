@@ -39,9 +39,6 @@ interface FishingBanDao {
         regionId: Long
     ): Flow<List<FishingBan>>
 
-    @Insert
-    suspend fun insert(ban: FishingBan): Long
-
     @Update
     suspend fun update(ban: FishingBan)
 

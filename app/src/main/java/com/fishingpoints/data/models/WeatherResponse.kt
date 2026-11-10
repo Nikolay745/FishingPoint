@@ -103,6 +103,7 @@ data class FishingWeather(
     val pressure: Int,                      // Давление
     val pressureTrend: PressureTrend,       // Тренд давления
     val windSpeed: Double,                 // скорость ветра
+    val windDirection: Int = 0, // Направление ветра в градусах
     val cloudiness: Int,                // облачность
     val precipitation: String,         // осадок
     val recommendation: String,         // рекомендация

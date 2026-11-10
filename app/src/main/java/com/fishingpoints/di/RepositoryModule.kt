@@ -4,6 +4,7 @@ import com.fishingpoints.data.local.database.FishingDatabase
 import com.fishingpoints.data.local.database.dao.BaitDao
 import com.fishingpoints.data.local.database.dao.DailyAllowanceDao
 import com.fishingpoints.data.local.database.dao.FeedDao
+import com.fishingpoints.data.local.database.dao.FishActivityRuleDao
 import com.fishingpoints.data.local.database.dao.FishDao
 import com.fishingpoints.data.local.database.dao.FishingCatchDao
 import com.fishingpoints.data.local.database.dao.FishingEntryDao
@@ -110,5 +111,14 @@ object RepositoryModule {
             feedDao = feedDao
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideFishActivityRuleDao(
+        database: FishingDatabase
+    ): FishActivityRuleDao {
+        return database.fishActivityRuleDao()
+    }
+
 
 }

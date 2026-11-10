@@ -24,6 +24,7 @@ import com.fishingpoints.presentation.screens.feed.FeedScreen
 import com.fishingpoints.presentation.screens.fish.fishDetail.FishDetailScreen
 import com.fishingpoints.presentation.screens.fish.editFish.FishEditScreen
 import com.fishingpoints.presentation.screens.fish.listFish.FishSpeciesScreen
+import com.fishingpoints.presentation.screens.fishActivityRule.FishActivityRuleScreen
 import com.fishingpoints.presentation.screens.fishingRule.EquipmentScreen
 import com.fishingpoints.presentation.screens.fishingRule.FishingRuleScreen
 import com.fishingpoints.presentation.screens.hook.HookSizesScreen
@@ -141,7 +142,6 @@ fun FishingGuideApp(themeViewModel: AppThemeViewModel) {
             ) {
                 FishingRuleScreen(
                     drawerState = drawerState,
-                    scope = scope,
                     viewModel = hiltViewModel(),
                     navController = navController
                 )
@@ -249,6 +249,13 @@ fun FishingGuideApp(themeViewModel: AppThemeViewModel) {
                     }
                 )
             }
+            composable("fish_activity_rules") {
+                FishActivityRuleScreen(
+                    drawerState = drawerState,
+                    scope = scope
+                )
+            }
+
 
             composable(
                 route = "fish_forecast/{fishId}",

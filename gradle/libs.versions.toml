@@ -30,7 +30,7 @@ playServicesMaps = "20.0.0"
 room = "2.8.4"
 
 # Hilt
-hilt = "2.59.2"
+hilt = "2.60.1"
 
 # Network
 retrofit = "3.0.0"

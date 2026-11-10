@@ -48,231 +48,6 @@ import com.fishingpoints.data.models.FishingWeather
 import com.fishingpoints.data.models.PressureTrend
 import com.fishingpoints.presentation.screens.settings.TemperatureUnit
 import java.util.Locale
-//
-//@Composable
-//fun WeatherCard(
-//    weather: FishingWeather,
-//    isLoading: Boolean,
-//    temperatureUnit: TemperatureUnit,
-//    onRefresh: () -> Unit,
-//    onUseRealWaterChanged: (Boolean) -> Unit
-//) {
-//    Card(
-//        modifier = Modifier.fillMaxWidth(),
-//        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier.padding(16.dp),
-//            verticalArrangement = Arrangement.spacedBy(12.dp)
-//        ) {
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                Text(
-//                    text = "🌤️ Прогноз погоды",
-//                    style = MaterialTheme.typography.titleLarge,
-//                    fontWeight = FontWeight.Bold
-//                )
-//
-//                IconButton(
-//                    onClick = onRefresh,
-//                    enabled = !isLoading
-//                ) {
-//                    if (isLoading) {
-//                        CircularProgressIndicator(
-//                            modifier = Modifier.size(20.dp),
-//                            strokeWidth = 2.dp
-//                        )
-//                    } else {
-//                        Icon(
-//                            Icons.Default.Refresh,
-//                            contentDescription = "Обновить погоду"
-//                        )
-//                    }
-//                }
-//
-//            }
-//
-//            if (isLoading) {
-//                Box(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    CircularProgressIndicator()
-//                }
-//            } else {
-//                // Температура воздуха
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("🌡️ Температура воздуха:", style = MaterialTheme.typography.bodyLarge)
-//                    Text(
-//                        formatTemperature(
-//                            temperatureCelsius = weather.temperature,
-//                            unit = temperatureUnit
-//                        ),
-//                        style = MaterialTheme.typography.bodyLarge,
-//                        fontWeight = FontWeight.Bold
-//                    )
-//
-//                }
-//
-//                // Температура воды
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    Text(
-//                        text =
-//                            if (weather.isRealWaterTemperature) {
-//                                "🌡️ Реальная температура воды:"
-//                            } else {
-//                                "📊 Расчетная температура воды: "
-//                            }
-//                    )
-//
-//                    Text(
-//                        formatTemperature(
-//                            temperatureCelsius = weather.waterTemperature,
-//                            unit = temperatureUnit
-//                        )
-//                    )
-//
-//                }
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween,
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    Text(
-//                        "Использовать реальную температуру воды",
-//                        modifier = Modifier.weight(1f)
-//                    )
-//
-//                    Switch(
-//                        checked = weather.isRealWaterTemperature,
-//                        onCheckedChange = onUseRealWaterChanged
-//                    )
-//                }
-//
-//                // Давление
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("📊 Давление:", style = MaterialTheme.typography.bodyLarge)
-//                    Column(horizontalAlignment = Alignment.End) {
-//
-//                        Text(
-//                            if (weather.pressure > 0) {
-//                                "${weather.pressure} мм рт.ст."
-//                            } else {
-//                                "Нет данных"
-//                            }
-//                        )
-//
-//                        Text(
-//                            when (weather.pressureTrend) {
-//                                PressureTrend.RISING -> "↑ Растет"
-//                                PressureTrend.FALLING -> "↓ Падает"
-//                                PressureTrend.STABLE -> "→ Стабильно"
-//                                PressureTrend.NODATA -> "→ Нет данных"
-//                            },
-//                            style = MaterialTheme.typography.bodySmall,
-//                            color = MaterialTheme.colorScheme.primary
-//                        )
-//                        // Добавляем пояснение
-//                        Text(
-//                            when {
-//                                weather.pressure == 0 -> "⚠️ Нет данных"
-//                                weather.pressure < 745 -> "⚠️ Низкое давление"
-//                                weather.pressure <= 760 -> "✓ Оптимально для рыбалки"
-//                                else -> "⚠️ Высокое давление"
-//                            },
-//                            style = MaterialTheme.typography.bodySmall,
-//                            color = when {
-//                                weather.pressure in 740..760 -> MaterialTheme.colorScheme.primary
-//                                else -> MaterialTheme.colorScheme.error
-//                            }
-//                        )
-//
-//                    }
-//                }
-//
-//                // Ветер
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("💨 Ветер:", style = MaterialTheme.typography.bodyLarge)
-//                    Text(
-//                        "${String.format(Locale.US,"%.1f", weather.windSpeed)} м/с",
-//                        style = MaterialTheme.typography.bodyLarge
-//                    )
-//                }
-//
-//                // Облачность
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("☁️ Облачность:", style = MaterialTheme.typography.bodyLarge)
-//                    Text("${weather.cloudiness}%", style = MaterialTheme.typography.bodyLarge)
-//                }
-//
-//                // Осадки
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("💧 Осадки:", style = MaterialTheme.typography.bodyLarge)
-//                    Text(weather.precipitation, style = MaterialTheme.typography.bodyLarge)
-//                }
-//
-//                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-//
-//                // Рейтинг клева
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween,
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    Text("🐟 Клев:", style = MaterialTheme.typography.bodyLarge)
-//                    Row {
-//                        repeat(5) { index ->
-//                            Icon(
-//                                if (index < weather.biteRating) Icons.Default.Star
-//                                else Icons.Default.StarBorder,
-//                                contentDescription = null,
-//                                tint = if (index < weather.biteRating)
-//                                    MaterialTheme.colorScheme.primary
-//                                else
-//                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-//                            )
-//                        }
-//                    }
-//                }
-//
-//                // Рекомендация
-//                Card(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    colors = CardDefaults.cardColors(
-//                        containerColor = MaterialTheme.colorScheme.primaryContainer
-//                    )
-//                ) {
-//                    Text(
-//                        text = weather.recommendation,
-//                        modifier = Modifier.padding(12.dp),
-//                        style = MaterialTheme.typography.bodyMedium
-//                    )
-//                }
-//            }
-//        }
-//    }
-//}
 
 @SuppressLint("DefaultLocale")
 @Composable
@@ -517,8 +292,9 @@ fun WeatherCard(
                             "%.1f м/с",
                             weather.windSpeed
                         ),
-                        subtitle = "Скорость ветра"
+                        subtitle = "${getWindDirection(weather.windDirection)} · ${weather.windDirection}°"
                     )
+
                 }
 
                 Row(
@@ -695,6 +471,22 @@ private fun WeatherMetric(
         }
     }
 }
+fun getWindDirection(degrees: Int): String {
+    val normalized = ((degrees % 360) + 360) % 360
+
+    return when (normalized) {
+        in 338..359, in 0..22 -> "С"
+        in 23..67 -> "СВ"
+        in 68..112 -> "В"
+        in 113..157 -> "ЮВ"
+        in 158..202 -> "Ю"
+        in 203..247 -> "ЮЗ"
+        in 248..292 -> "З"
+        in 293..337 -> "СЗ"
+        else -> "—"
+    }
+}
+
 
 fun getWeatherIcon(weatherId: Int): ImageVector {
     return when (weatherId) {

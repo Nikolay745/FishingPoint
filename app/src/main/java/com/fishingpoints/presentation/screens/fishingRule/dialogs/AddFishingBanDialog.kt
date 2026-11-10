@@ -19,6 +19,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +28,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +40,7 @@ import com.fishingpoints.data.local.entity.Region
 import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,24 +54,57 @@ fun AddFishingBanDialog(
     onSave: (FishingBan) -> Unit
 ) {
     val initialRegionId = ban?.regionId ?: selectedRegionId
+
     var selectedRegionIdLocal by rememberSaveable(
         ban?.id, selectedRegionId
     ) {
         mutableStateOf(initialRegionId)
     }
 
-    var selectedFishIds by remember(ban?.id) {
+// Сохранение выбранных рыб
+    val fishIdsSaver = listSaver<Set<Long>, Long>(
+        save = { it.toList() },
+        restore = { it.toSet() }
+    )
+
+    var selectedFishIds by rememberSaveable(
+        ban?.id,
+        stateSaver = fishIdsSaver
+    ) {
         mutableStateOf(ban?.fishIds?.toSet() ?: emptySet())
     }
-    var title by rememberSaveable(ban?.id) { mutableStateOf(ban?.title ?: "") }
-    var description by rememberSaveable(ban?.id) { mutableStateOf(ban?.description ?: "") }
-    var location by rememberSaveable(ban?.id) { mutableStateOf(ban?.location ?: "") }
 
+    var title by rememberSaveable(ban?.id) {
+        mutableStateOf(ban?.title ?: "")
+    }
+
+    var description by rememberSaveable(ban?.id) {
+        mutableStateOf(ban?.description ?: "")
+    }
+
+    var location by rememberSaveable(ban?.id) {
+        mutableStateOf(ban?.location ?: "")
+    }
+
+// Saver для LocalDate
     val localDateSaver = Saver<LocalDate, String>(
         save = { it.toString() },
         restore = { LocalDate.parse(it) }
     )
-    // Период действия записи
+
+// Saver для nullable LocalDate
+    val nullableLocalDateSaver = Saver<LocalDate?, String>(
+        save = { it?.toString() ?: "" },
+        restore = { value ->
+            value.takeIf { it.isNotEmpty() }?.let(LocalDate::parse)
+        }
+    )
+
+
+// =====================================
+// ПЕРИОД ДЕЙСТВИЯ ЗАПИСИ
+// =====================================
+
     var validFrom by rememberSaveable(
         ban?.id,
         selectedDate,
@@ -80,13 +116,23 @@ fun AddFishingBanDialog(
     var validUntil by rememberSaveable(
         ban?.id,
         selectedDate,
-        stateSaver = Saver(
-            save = { it?.toString() },
-            restore = { it.let(LocalDate::parse) }
-        )
+        stateSaver = nullableLocalDateSaver
     ) {
         mutableStateOf(ban?.validUntil)
     }
+
+// =====================================
+// РЕЖИМ СЕЗОННОСТИ
+// =====================================
+
+    var seasonRepeatsAnnually by rememberSaveable(ban?.id) {
+        mutableStateOf(ban?.seasonRepeatsAnnually ?: true)
+    }
+
+// =====================================
+// ЕЖЕГОДНЫЙ СЕЗОН
+// =====================================
+
     var seasonStartMonth by rememberSaveable(ban?.id) {
         mutableIntStateOf(ban?.seasonStartMonth ?: 4)
     }
@@ -103,8 +149,42 @@ fun AddFishingBanDialog(
         mutableIntStateOf(ban?.seasonEndDay ?: 10)
     }
 
-    var fishExpanded by remember { mutableStateOf(false) }
-    var regionExpanded by remember { mutableStateOf(false) }
+// =====================================
+// РАЗОВЫЙ СЕЗОН
+// =====================================
+
+    var seasonStartDate by rememberSaveable(
+        ban?.id,
+        selectedDate,
+        stateSaver = localDateSaver
+    ) {
+        mutableStateOf(
+            ban?.seasonStartDate ?: selectedDate
+        )
+    }
+
+    var seasonEndDate by rememberSaveable(
+        ban?.id,
+        selectedDate,
+        stateSaver = localDateSaver
+    ) {
+        mutableStateOf(
+            ban?.seasonEndDate ?: selectedDate.plusMonths(1)
+        )
+    }
+
+// =====================================
+// СОСТОЯНИЯ ДИАЛОГОВ
+// =====================================
+
+    var fishExpanded by remember {
+        mutableStateOf(false)
+    }
+
+    var regionExpanded by remember {
+        mutableStateOf(false)
+    }
+
     var showSeasonStartDialog by remember {
         mutableStateOf(false)
     }
@@ -112,21 +192,170 @@ fun AddFishingBanDialog(
     var showSeasonEndDialog by remember {
         mutableStateOf(false)
     }
-    var showValidFromDialog by remember { mutableStateOf(false) }
-    var showValidUntilDialog by remember { mutableStateOf(false) }
-    var errorMessage by rememberSaveable(ban?.id) { mutableStateOf<String?>(null) }
+
+    var showSeasonStartDateDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showSeasonEndDateDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showValidFromDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var showValidUntilDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var errorMessage by rememberSaveable(ban?.id) {
+        mutableStateOf<String?>(null)
+    }
+
     val scrollState = rememberScrollState()
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy") }
+
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern(
+            "dd.MM.yyyy",
+            Locale.getDefault()
+        )
+    }
 
     val selectedRegion = regionList.firstOrNull {
         it.id == selectedRegionIdLocal
     }
+
     val selectedFishNames = fishList
         .filter { it.id in selectedFishIds }
         .map { it.name }
 
+// =====================================
+// ПРОВЕРКА И СОХРАНЕНИЕ
+// =====================================
+
+    fun saveBan() {
+
+        val regionId = selectedRegionIdLocal
+
+        if (regionId == null || selectedRegion == null) {
+            errorMessage = "Выберите регион"
+            return
+        }
+
+        if (title.isBlank()) {
+            errorMessage = "Введите название запрета"
+            return
+        }
+
+        // Проверка периода действия записи
+        if (
+            validUntil != null &&
+            validUntil!!.isBefore(validFrom)
+        ) {
+            errorMessage =
+                "Дата окончания действия не может быть раньше даты начала"
+            return
+        }
+
+        // Проверка ежегодного сезона
+        if (seasonRepeatsAnnually) {
+
+            if (!isValidSeasonDate(
+                    seasonStartMonth,
+                    seasonStartDay
+                )
+            ) {
+                errorMessage = "Некорректная дата начала сезона"
+                return
+            }
+
+            if (!isValidSeasonDate(
+                    seasonEndMonth,
+                    seasonEndDay
+                )
+            ) {
+                errorMessage = "Некорректная дата окончания сезона"
+                return
+            }
+
+            if (
+                seasonStartMonth == seasonEndMonth &&
+                seasonStartDay == seasonEndDay
+            ) {
+                errorMessage =
+                    "Начало и окончание сезона не могут совпадать"
+                return
+            }
+
+        } else {
+
+            // Проверка разового сезона
+            if (seasonStartDate.isAfter(seasonEndDate)) {
+                errorMessage =
+                    "Окончание сезона не может быть раньше начала"
+                return
+            }
+        }
+
+        // Формирование Entity
+        val fishingBan = FishingBan(
+
+            id = ban?.id ?: 0L,
+
+            regionId = regionId,
+
+            title = title.trim(),
+
+            description = description.trim().ifBlank {
+                null
+            },
+
+            location = location.trim().ifBlank {
+                null
+            },
+
+            fishIds = selectedFishIds.toList(),
+
+            validFrom = validFrom,
+            validUntil = validUntil,
+
+            seasonRepeatsAnnually = seasonRepeatsAnnually,
+
+            // Ежегодный сезон
+            seasonStartMonth =
+                if (seasonRepeatsAnnually) seasonStartMonth else null,
+
+            seasonStartDay =
+                if (seasonRepeatsAnnually) seasonStartDay else null,
+
+            seasonEndMonth =
+                if (seasonRepeatsAnnually) seasonEndMonth else null,
+
+            seasonEndDay =
+                if (seasonRepeatsAnnually) seasonEndDay else null,
+
+            // Разовый сезон
+            seasonStartDate =
+                if (!seasonRepeatsAnnually) seasonStartDate else null,
+
+            seasonEndDate =
+                if (!seasonRepeatsAnnually) seasonEndDate else null
+        )
+
+        errorMessage = null
+
+        onSave(fishingBan)
+    }
+
+// =====================================
+// ОСНОВНОЙ ДИАЛОГ
+// =====================================
+
     AlertDialog(
+
         onDismissRequest = onDismiss,
+
         title = {
             Text(
                 if (ban == null) {
@@ -140,72 +369,7 @@ fun AddFishingBanDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val regionId = selectedRegionIdLocal
-
-                    if (
-                        regionId == null ||
-                        selectedRegion == null
-                    ) {
-                        errorMessage = "Выберите регион"
-                        return@TextButton
-                    }
-
-                    if (title.isBlank()) {
-                        errorMessage = "Введите название запрета"
-                        return@TextButton
-                    }
-
-                    // Проверяем период действия записи
-                    if (
-                        validUntil != null &&
-                        validUntil!!.isBefore(validFrom)
-                    ) {
-                        errorMessage =
-                            "Дата окончания действия не может быть раньше даты начала"
-                        return@TextButton
-                    }
-
-                    // Проверяем начало сезона
-                    if (!isValidSeasonDate(seasonStartMonth, seasonStartDay)) {
-                        errorMessage = "Некорректная дата начала сезона"
-                        return@TextButton
-                    }
-
-                    // Проверяем окончание сезона
-                    if (!isValidSeasonDate(seasonEndMonth, seasonEndDay)) {
-                        errorMessage = "Некорректная дата окончания сезона"
-                        return@TextButton
-                    }
-
-                    // Проверяем совпадение сезонных дат
-                    if (
-                        seasonStartMonth == seasonEndMonth &&
-                        seasonStartDay == seasonEndDay
-                    ) {
-                        errorMessage = "Начало и окончание сезона не могут совпадать"
-                        return@TextButton
-                    }
-
-                    val fishingBan = FishingBan(
-                        id = ban?.id ?: 0L,
-                        regionId = regionId,
-                        validFrom = validFrom,
-                        validUntil = validUntil,
-                        title = title.trim(),
-                        description = description.trim().ifBlank { null },
-                        location = location.trim().ifBlank { null },
-                        fishIds = selectedFishIds.toList(),
-                        seasonStartMonth = seasonStartMonth,
-                        seasonStartDay = seasonStartDay,
-                        seasonEndMonth = seasonEndMonth,
-                        seasonEndDay = seasonEndDay
-                    )
-
-                    // Убираем сообщение об ошибке
-                    errorMessage = null
-
-                    // Передаем данные родительскому Composable
-                    onSave(fishingBan)
+                    saveBan()
                 }
             ) {
                 Text(
@@ -215,17 +379,26 @@ fun AddFishingBanDialog(
         },
 
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss
+            ) {
                 Text("Отмена")
             }
         },
 
         text = {
+
             Column(
                 modifier = Modifier.verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+
+                // =====================================
+                // ОШИБКИ
+                // =====================================
+
                 errorMessage?.let { error ->
+
                     Text(
                         text = error,
                         color = MaterialTheme.colorScheme.error,
@@ -233,18 +406,24 @@ fun AddFishingBanDialog(
                     )
                 }
 
+                // =====================================
                 // РЕГИОН
+                // =====================================
+
                 ExposedDropdownMenuBox(
                     expanded = regionExpanded,
                     onExpandedChange = {
                         regionExpanded = !regionExpanded
                     }
                 ) {
+
                     OutlinedTextField(
                         value = selectedRegion?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Регион") },
+                        label = {
+                            Text("Регион")
+                        },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
                                 expanded = regionExpanded
@@ -264,11 +443,17 @@ fun AddFishingBanDialog(
                             regionExpanded = false
                         }
                     ) {
+
                         regionList.forEach { region ->
+
                             DropdownMenuItem(
-                                text = { Text(region.name) },
+                                text = {
+                                    Text(region.name)
+                                },
                                 onClick = {
+
                                     selectedRegionIdLocal = region.id
+
                                     regionExpanded = false
                                     errorMessage = null
                                 }
@@ -277,13 +462,17 @@ fun AddFishingBanDialog(
                     }
                 }
 
-                // РЫБА
+                // =====================================
+                // ВЫБОР РЫБЫ
+                // =====================================
+
                 ExposedDropdownMenuBox(
                     expanded = fishExpanded,
                     onExpandedChange = {
                         fishExpanded = !fishExpanded
                     }
                 ) {
+
                     OutlinedTextField(
                         value = if (selectedFishIds.isEmpty()) {
                             "Все виды рыб"
@@ -314,13 +503,15 @@ fun AddFishingBanDialog(
                             fishExpanded = false
                         }
                     ) {
-                        // Выбрать все виды рыб
+
                         DropdownMenuItem(
                             text = {
                                 Text("Все виды рыб")
                             },
                             onClick = {
+
                                 selectedFishIds = emptySet()
+
                                 fishExpanded = false
                                 errorMessage = null
                             }
@@ -329,24 +520,33 @@ fun AddFishingBanDialog(
                         HorizontalDivider()
 
                         fishList.forEach { fish ->
-                            val isSelected = fish.id in selectedFishIds
+
+                            val isSelected =
+                                fish.id in selectedFishIds
 
                             DropdownMenuItem(
+
                                 text = {
+
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+
                                         Checkbox(
                                             checked = isSelected,
                                             onCheckedChange = null
                                         )
 
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(
+                                            modifier = Modifier.width(8.dp)
+                                        )
 
                                         Text(fish.name)
                                     }
                                 },
+
                                 onClick = {
+
                                     selectedFishIds =
                                         if (isSelected) {
                                             selectedFishIds - fish.id
@@ -372,43 +572,66 @@ fun AddFishingBanDialog(
                     }
                 }
 
+                // =====================================
                 // НАЗВАНИЕ
+                // =====================================
+
                 OutlinedTextField(
                     value = title,
                     onValueChange = {
                         title = it
                         errorMessage = null
                     },
-                    label = { Text("Название запрета") },
+                    label = {
+                        Text("Название запрета")
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // =====================================
                 // ОПИСАНИЕ
+                // =====================================
+
                 OutlinedTextField(
                     value = description,
                     onValueChange = {
                         description = it
                     },
-                    label = { Text("Описание") },
+                    label = {
+                        Text("Описание")
+                    },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // =====================================
                 // МЕСТО
+                // =====================================
+
                 OutlinedTextField(
                     value = location,
                     onValueChange = {
                         location = it
                     },
-                    label = { Text("Место") },
+                    label = {
+                        Text("Место")
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 HorizontalDivider()
 
-                // НАЧАЛО ДЕЙСТВИЯ ЗАПИСИ
+                // =====================================
+                // ПЕРИОД ДЕЙСТВИЯ ЗАПИСИ
+                // =====================================
+
+                Text(
+                    text = "Период действия запрета",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
                 OutlinedButton(
                     onClick = {
                         showValidFromDialog = true
@@ -420,7 +643,6 @@ fun AddFishingBanDialog(
                     )
                 }
 
-                // ОКОНЧАНИЕ ДЕЙСТВИЯ ЗАПИСИ
                 OutlinedButton(
                     onClick = {
                         showValidUntilDialog = true
@@ -436,6 +658,7 @@ fun AddFishingBanDialog(
                 }
 
                 if (validUntil != null) {
+
                     TextButton(
                         onClick = {
                             validUntil = null
@@ -447,115 +670,264 @@ fun AddFishingBanDialog(
                 }
 
                 HorizontalDivider()
+
+                // =====================================
+                // РЕЖИМ СЕЗОННОСТИ
+                // =====================================
+
                 Text(
-                    text = "Ежегодный сезон запрета",
+                    text = "Сезон запрета",
                     style = MaterialTheme.typography.titleMedium
                 )
 
-                OutlinedButton(
-                    onClick = {
-                        showSeasonStartDialog = true
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+
                     Text(
-                        "Начало сезона: %02d.%02d".format(
-                            seasonStartDay,
-                            seasonStartMonth
-                        )
+                        text = "Повторять ежегодно",
+                        modifier = Modifier.weight(1f)
                     )
-                }
-                OutlinedButton(
-                    onClick = {
-                        showSeasonEndDialog = true
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        "Окончание сезона: %02d.%02d".format(
-                            seasonEndDay,
-                            seasonEndMonth
-                        )
+
+                    Switch(
+                        checked = seasonRepeatsAnnually,
+                        onCheckedChange = {
+                            seasonRepeatsAnnually = it
+                            errorMessage = null
+                        }
                     )
                 }
 
                 Text(
-                    text = "Сезон повторяется ежегодно независимо от года.",
+                    text = if (seasonRepeatsAnnually) {
+                        "Запрет действует в указанный период каждый год."
+                    } else {
+                        "Запрет действует только в указанный календарный период."
+                    },
                     style = MaterialTheme.typography.bodySmall
                 )
 
-                Text(
-                    text = "Период сезона, в который запрещена рыбалка.",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                HorizontalDivider()
+
+                // =====================================
+                // ЕЖЕГОДНЫЙ СЕЗОН
+                // =====================================
+
+                if (seasonRepeatsAnnually) {
+
+                    OutlinedButton(
+                        onClick = {
+                            showSeasonStartDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Начало сезона: %02d.%02d".format(
+                                seasonStartDay,
+                                seasonStartMonth
+                            )
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            showSeasonEndDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Окончание сезона: %02d.%02d".format(
+                                seasonEndDay,
+                                seasonEndMonth
+                            )
+                        )
+                    }
+
+                    Text(
+                        text = "Например: с 1 декабря по 31 января. " +
+                                "Такой запрет будет действовать ежегодно.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                } else {
+
+                    // =====================================
+                    // РАЗОВЫЙ СЕЗОН
+                    // =====================================
+
+                    OutlinedButton(
+                        onClick = {
+                            showSeasonStartDateDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Начало сезона: ${
+                                seasonStartDate.format(dateFormatter)
+                            }"
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            showSeasonEndDateDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Окончание сезона: ${
+                                seasonEndDate.format(dateFormatter)
+                            }"
+                        )
+                    }
+
+                    Text(
+                        text = "Этот запрет действует только один раз, " +
+                                "в выбранный период.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     )
 
-    // ВЫБОР НАЧАЛА ДЕЙСТВИЯ ЗАПИСИ
+// =====================================
+// DATE PICKER: VALID FROM
+// =====================================
+
     if (showValidFromDialog) {
+
         LocalDatePickerDialog(
             initialDate = validFrom,
+
             onDateSelected = { date ->
                 validFrom = date
                 showValidFromDialog = false
                 errorMessage = null
             },
+
             onDismiss = {
                 showValidFromDialog = false
             }
         )
     }
 
-    // ВЫБОР ОКОНЧАНИЯ ДЕЙСТВИЯ ЗАПИСИ
+// =====================================
+// DATE PICKER: VALID UNTIL
+// =====================================
+
     if (showValidUntilDialog) {
+
         LocalDatePickerDialog(
             initialDate = validUntil ?: validFrom,
+
             onDateSelected = { date ->
                 validUntil = date
                 showValidUntilDialog = false
                 errorMessage = null
             },
+
             onDismiss = {
                 showValidUntilDialog = false
             }
         )
     }
 
-    // ВЫБОР НАЧАЛА ЕЖЕГОДНОГО СЕЗОНА
+// =====================================
+// DATE PICKER: SEASON START
+// =====================================
+
     if (showSeasonStartDialog) {
+
         MonthDayPickerDialog(
             initialMonth = seasonStartMonth,
             initialDay = seasonStartDay,
-            title = "Начало сезона",
+            title = "Начало ежегодного сезона",
+
             onDateSelected = { month, day ->
+
                 seasonStartMonth = month
                 seasonStartDay = day
 
                 showSeasonStartDialog = false
                 errorMessage = null
             },
+
             onDismiss = {
                 showSeasonStartDialog = false
             }
         )
     }
 
-    // ВЫБОР ОКОНЧАНИЯ ЕЖЕГОДНОГО СЕЗОНА
+// =====================================
+// DATE PICKER: SEASON END
+// =====================================
+
     if (showSeasonEndDialog) {
+
         MonthDayPickerDialog(
             initialMonth = seasonEndMonth,
             initialDay = seasonEndDay,
-            title = "Окончание сезона",
+            title = "Окончание ежегодного сезона",
+
             onDateSelected = { month, day ->
+
                 seasonEndMonth = month
                 seasonEndDay = day
 
                 showSeasonEndDialog = false
                 errorMessage = null
             },
+
             onDismiss = {
                 showSeasonEndDialog = false
+            }
+        )
+    }
+
+// =====================================
+// DATE PICKER: ONE-TIME SEASON START
+// =====================================
+
+    if (showSeasonStartDateDialog) {
+
+        LocalDatePickerDialog(
+            initialDate = seasonStartDate,
+
+            onDateSelected = { date ->
+
+                seasonStartDate = date
+
+                showSeasonStartDateDialog = false
+                errorMessage = null
+            },
+
+            onDismiss = {
+                showSeasonStartDateDialog = false
+            }
+        )
+    }
+
+// =====================================
+// DATE PICKER: ONE-TIME SEASON END
+// =====================================
+
+    if (showSeasonEndDateDialog) {
+
+        LocalDatePickerDialog(
+            initialDate = seasonEndDate,
+
+            onDateSelected = { date ->
+
+                seasonEndDate = date
+
+                showSeasonEndDateDialog = false
+                errorMessage = null
+            },
+
+            onDismiss = {
+                showSeasonEndDateDialog = false
             }
         )
     }

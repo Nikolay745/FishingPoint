@@ -18,8 +18,11 @@ import java.time.LocalDate
         )
     ],
     indices = [
-        Index("regionId")
+        Index(
+            value = ["regionId", "validFrom"]
+        )
     ]
+
 )
 data class FishingBan(
     @PrimaryKey(autoGenerate = true)

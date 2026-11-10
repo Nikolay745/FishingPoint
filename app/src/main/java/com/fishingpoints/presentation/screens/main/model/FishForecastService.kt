@@ -1,13 +1,16 @@
 package com.fishingpoints.presentation.screens.main.model
 
-import com.fishingpoints.presentation.formatting.formatTimeRange
 import com.fishingpoints.data.local.entity.Fish
 import com.fishingpoints.data.local.entity.LocationEntity
+import com.fishingpoints.data.local.enums.FeedingActivity
+import com.fishingpoints.data.local.enums.RuleConfidence
 import com.fishingpoints.data.local.enums.Season
 import com.fishingpoints.data.local.enums.TimeOfDay
 import com.fishingpoints.data.models.FishingWeather
 import com.fishingpoints.domain.service.BiteRatingCalculator
+import com.fishingpoints.domain.service.FishActivityCalculator
 import com.fishingpoints.domain.utils.FishingCalendar
+import com.fishingpoints.presentation.formatting.formatTimeRange
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import javax.inject.Inject
@@ -17,9 +20,10 @@ import kotlin.math.roundToInt
 @Singleton
 class FishForecastService @Inject constructor(
     private val biteRatingCalculator: BiteRatingCalculator,
-    private val fishingCalendar: FishingCalendar
+    private val fishingCalendar: FishingCalendar,
+    private val fishActivityCalculator: FishActivityCalculator
 ) {
-    fun calculate(
+    suspend fun calculate(
         fish: Fish,
         weather: FishingWeather,
         season: Season,
@@ -30,6 +34,32 @@ class FishForecastService @Inject constructor(
     ): FishForecastRecommendation {
 
         val reasons = mutableListOf<String>()
+        // 1. Определяем активность рыбы по правилам.
+        val activityResult = fishActivityCalculator.calculate(
+            fishId = fish.id,
+            waterTemperature = weather.waterTemperature,
+            season = season,
+            timeOfDay = timeOfDay,
+            regionId = location.regionId
+        )
+
+        activityResult.description?.let { description ->
+            reasons += description
+        }
+
+        activityResult.confidence?.let { confidence ->
+            reasons += when (confidence) {
+                RuleConfidence.HIGH ->
+                    "Достоверность правила: высокая"
+
+                RuleConfidence.MEDIUM ->
+                    "Достоверность правила: средняя"
+
+                RuleConfidence.LOW ->
+                    "Достоверность правила: низкая"
+            }
+        }
+
 
         // 1. Температурная пригодность для конкретного вида.
         val temperatureEffect = calculateTemperatureEffect(
@@ -38,19 +68,27 @@ class FishForecastService @Inject constructor(
             max = fish.temperatureMax
         )
 
-        when {
+        val temperatureCompatibility =
+            calculateTemperatureCompatibility(
+                temperature = weather.waterTemperature,
+                min = fish.temperatureMin,
+                max = fish.temperatureMax
+            )
+
+        reasons += when {
             weather.waterTemperature == null ->
-                reasons += "Температура воды неизвестна"
+                "Температура воды неизвестна"
 
             temperatureEffect > 0.2 ->
-                reasons += "Температура воды благоприятна"
+                "Температура воды благоприятна"
 
             temperatureEffect < -0.2 ->
-                reasons += "Температура воды менее благоприятна"
+                "Температура воды менее благоприятна"
 
             else ->
-                reasons += "Температура воды допустима"
+                "Температура воды допустима"
         }
+
 
         // 2. Предпочтения по сезону.
         val preferredSeasons = fish.seasons.orEmpty()
@@ -60,6 +98,22 @@ class FishForecastService @Inject constructor(
             season in preferredSeasons -> 0.3
             else -> -0.3
         }
+        val activityBonus = when {
+            activityResult.activity == null -> 0.0
+
+            activityResult.hasTemperatureMatch ->
+                getActivityBonus(activityResult.activity)
+
+            else -> 0.0
+        }
+
+
+        // Если температурные правила существуют,
+// но ни одно из них не подошло,
+// не считаем активность подтверждённой.
+        val activityTemperatureMismatch =
+            activityResult.hasTemperatureRules &&
+                    !activityResult.hasTemperatureMatch
 
         if (preferredSeasons.isNotEmpty()) {
             reasons += if (seasonEffect > 0.0) {
@@ -73,14 +127,11 @@ class FishForecastService @Inject constructor(
         val preferredTimes = fish.bestTimeOfDay.orEmpty()
 
         // 4. Индивидуально рассчитываем каждый интервал.
-        val fishTimes = allTimes.mapNotNull { interval ->
-
-            val intervalWeather = interval.weather
-                ?: return@mapNotNull null
+        val fishTimes = allTimes.map { interval ->
 
             // Используем локальные дату, время и часовой пояс.
             val intervalDateTime = ZonedDateTime.of(
-                date,
+                interval.date,
                 interval.start,
                 location.zoneId
             )
@@ -90,15 +141,22 @@ class FishForecastService @Inject constructor(
                 dateTime = intervalDateTime
             )
 
+            // Индивидуальная активность рыбы для данного интервала.
+            val intervalActivity = fishActivityCalculator.calculate(
+                fishId = fish.id,
+                waterTemperature = weather.waterTemperature,
+                season = season,
+                timeOfDay = intervalTimeOfDay,
+                regionId = location.regionId
+            )
+
+
             // Базовый рейтинг конкретного временного интервала.
             // Погодные условия уже учтены в FishingService.
             var rating = interval.rating
 
             // Индивидуальная поправка на температурные предпочтения рыбы.
-            rating += temperatureEffect
 
-            // Индивидуальная поправка на предпочтения по сезону.
-            rating += seasonEffect
 
             // Предпочтения конкретного вида по времени суток.
             val timeEffect = when {
@@ -107,7 +165,38 @@ class FishForecastService @Inject constructor(
                 else -> -0.2
             }
 
+            rating += temperatureEffect
+
+            rating += seasonEffect
+
+            if (
+                intervalActivity.activity != null &&
+                intervalActivity.hasTemperatureMatch
+            ) {
+                rating += getActivityBonus(
+                    intervalActivity.activity
+                )
+            }
+
+
             rating += timeEffect
+
+// Учитываем температурную совместимость.
+            rating *= temperatureCompatibility
+
+// Если температурные правила существуют,
+// но не найдено подходящего правила активности,
+// ограничиваем рейтинг.
+            if (
+                activityTemperatureMismatch ||
+                (
+                        intervalActivity.hasTemperatureRules &&
+                                !intervalActivity.hasTemperatureMatch
+                        )
+            ) {
+                rating = minOf(rating, 1.5)
+            }
+
             rating = rating.coerceIn(0.0, 5.0)
 
             val activityLevel = (
@@ -154,6 +243,24 @@ class FishForecastService @Inject constructor(
                     }
                 }
 
+                // Индивидуальная активность рыбы.
+                if (
+                    intervalActivity.activity != null &&
+                    intervalActivity.hasTemperatureMatch
+                ) {
+                    val activity = intervalActivity.activity
+
+                    add(
+                        "${activity.icon} Активность рыбы: ${activity.displayName}"
+                    )
+                }
+
+
+                intervalActivity.description?.let { description ->
+                    add(description)
+                }
+
+
             }
 
             FishTimeForecast(
@@ -162,8 +269,16 @@ class FishForecastService @Inject constructor(
                 rating = rating,
                 activityLevel = activityLevel,
                 description = interval.description,
-                reasons = intervalReasons
+                reasons = intervalReasons,
+
+                feedingActivity = intervalActivity.activity
+                    ?: FeedingActivity.NONE,
+
+                activityDescription = intervalActivity.description,
+
+                ruleConfidence = intervalActivity.confidence
             )
+
         }.sortedByDescending { it.rating }
 
         // 5. Выбираем три лучших интервала.
@@ -172,41 +287,62 @@ class FishForecastService @Inject constructor(
             .sortedBy { it.start }
 
         // 6. Итоговый рейтинг вида — по лучшему доступному интервалу.
-        val rating = fishTimes
+        var rating = fishTimes
             .maxOfOrNull { it.rating }
-            ?: (
-                    weather.biteRating +
+            ?: (  weather.biteRating +
                             temperatureEffect +
-                            seasonEffect
-                    ).coerceIn(0.0, 5.0)
+                            seasonEffect +
+                            activityBonus
+                    ) * temperatureCompatibility
+
+        rating = rating.coerceIn(0.0, 5.0)
+
+        if (activityTemperatureMismatch) {
+            rating = minOf(rating, 1.5)
+        }
+
+
+
+
 
         val activityLevel = (
                 rating / 5.0 * 10.0
                 ).roundToInt().coerceIn(0, 10)
 
+        activityResult.activity?.let { activity ->
+            reasons += "${activity.icon} Активность рыбы: ${activity.displayName}"
+        }
+
+        activityResult.description?.let {
+            reasons += it
+        }
+
+
         // Объясняем итоговый рейтинг.
-        when {
+        reasons += when {
             rating >= 4.0 ->
-                reasons += "Высокая перспективность клёва"
+                "Высокая перспективность клёва"
 
             rating >= 3.0 ->
-                reasons += "Умеренно благоприятные условия"
+                "Умеренно благоприятные условия"
 
             rating >= 2.0 ->
-                reasons += "Перспективность клёва ниже средней"
+                "Перспективность клёва ниже средней"
 
             else ->
-                reasons += "Условия для клёва неблагоприятны"
+                "Условия для клёва неблагоприятны"
         }
 
         // Объясняем выбор лучшего интервала.
         val bestTime = bestTimes.maxByOrNull { it.rating }
 
-        if (bestTime != null) {
-            reasons += "Лучший период: ${formatTimeRange(bestTime.start, bestTime.end)}"
+
+        reasons += if (bestTime != null) {
+            "Лучший период: ${formatTimeRange(bestTime.start, bestTime.end)}"
         } else {
-            reasons += "Нет доступных временных интервалов с прогнозом"
+            "Нет доступных временных интервалов с прогнозом"
         }
+
 
         // Учитываем предпочтения по времени суток.
         if (preferredTimes.isNotEmpty()) {
@@ -214,14 +350,6 @@ class FishForecastService @Inject constructor(
                 "Текущее время суток подходит для этого вида"
             } else {
                 "Сейчас не самое предпочтительное время для этого вида"
-            }
-        }
-
-        if (preferredTimes.isNotEmpty()) {
-            reasons += if (timeOfDay in preferredTimes) {
-                "Текущее время суток подходит для ловли"
-            } else {
-                "Для этого вида предпочтительно другое время суток"
             }
         }
 
@@ -235,7 +363,13 @@ class FishForecastService @Inject constructor(
             tipsBaits = fish.tipsBaits,
             tackles = fish.tackles,
             baitForFish = fish.baitForFish,
-            bestTimes = bestTimes
+            bestTimes = bestTimes,
+            feedingActivity = activityResult.activity ?: FeedingActivity.NONE,
+
+            activityDescription = activityResult.description,
+
+            ruleConfidence = activityResult.confidence
+
         )
     }
 
@@ -249,7 +383,6 @@ class FishForecastService @Inject constructor(
 
         if (min == null && max == null) return 0.0
 
-        // Температура внутри предпочтительного диапазона.
         if (
             (min == null || temperature >= min) &&
             (max == null || temperature <= max)
@@ -257,7 +390,6 @@ class FishForecastService @Inject constructor(
             return 0.5
         }
 
-        // Расстояние до ближайшей границы диапазона.
         val deviation = when {
             min != null && temperature < min ->
                 min - temperature
@@ -268,13 +400,65 @@ class FishForecastService @Inject constructor(
             else -> 0.0
         }
 
-        // Чем дальше температура от диапазона,
-        // тем сильнее отрицательная поправка.
         return when {
-            deviation <= 2.0 -> -0.2
-            deviation <= 5.0 -> -0.4
-            deviation <= 10.0 -> -0.7
-            else -> -1.0
+            deviation <= 2.0 -> -0.3
+            deviation <= 5.0 -> -0.7
+            deviation <= 8.0 -> -1.2
+            deviation <= 12.0 -> -1.8
+            deviation <= 15.0 -> -2.5
+            else -> -3.0
         }
     }
+
+    private fun calculateTemperatureCompatibility(
+        temperature: Double?,
+        min: Int?,
+        max: Int?
+    ): Double {
+
+        // Температура неизвестна.
+        if (temperature == null) return 0.5
+
+        // Нет температурных ограничений.
+        if (min == null && max == null) return 0.5
+
+        // Температура соответствует предпочтительному диапазону.
+        if (
+            (min == null || temperature >= min) &&
+            (max == null || temperature <= max)
+        ) {
+            return 1.0
+        }
+
+        val deviation = when {
+            min != null && temperature < min ->
+                min - temperature
+
+            max != null && temperature > max ->
+                temperature - max
+
+            else -> 0.0
+        }
+
+        return when {
+            deviation <= 2.0 -> 0.8
+            deviation <= 5.0 -> 0.6
+            deviation <= 8.0 -> 0.4
+            deviation <= 12.0 -> 0.2
+            else -> 0.0
+        }
+    }
+
+    private fun getActivityBonus(
+        activity: FeedingActivity
+    ): Double {
+        return when (activity) {
+            FeedingActivity.VERY_HIGH -> 0.8
+            FeedingActivity.HIGH -> 0.5
+            FeedingActivity.MEDIUM -> 0.2
+            FeedingActivity.LOW -> -0.3
+            FeedingActivity.NONE -> 0.0
+        }
+    }
+
 }

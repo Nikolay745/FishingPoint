@@ -1,10 +1,12 @@
 package com.fishingpoints.data.local.database.initializer
 
 
+import android.util.Log
 import androidx.room.withTransaction
 import com.fishingpoints.data.local.database.FishingDatabase
 import com.fishingpoints.data.local.database.initializer.catalog.BaitSeeder
 import com.fishingpoints.data.local.database.initializer.catalog.FeedSeeder
+import com.fishingpoints.data.local.database.initializer.catalog.FishActivityRuleSeeder
 import com.fishingpoints.data.local.database.initializer.catalog.FishCrossRefSeeder
 import com.fishingpoints.data.local.database.initializer.catalog.FishSeeder
 import com.fishingpoints.data.local.database.initializer.catalog.HookSeeder
@@ -24,10 +26,13 @@ internal class DatabaseInitializer @Inject  constructor(
     private val hookSeeder: HookSeeder,
     private val fishCrossRefSeeder: FishCrossRefSeeder,
     private val voronezhSeeder: VoronezhRegionSeeder,
-    private val sverdlovskSeeder: SverdlovskRegionSeeder
+    private val sverdlovskSeeder: SverdlovskRegionSeeder,
+    private val fishActivityRuleSeeder: FishActivityRuleSeeder
+
 ) {
     suspend fun initializeDatabase() {
         database.withTransaction {
+            Log.d("DatabaseInitializer", "Запуск FishActivityRuleSeeder")
             fishSeeder.seedIfEmpty()
             baitSeeder.seedIfEmpty()
             tackleSeeder.seedIfEmpty()
@@ -36,6 +41,9 @@ internal class DatabaseInitializer @Inject  constructor(
             fishCrossRefSeeder.seedIfEmpty()   // зависит от рыб
             voronezhSeeder.seedIfEmpty()
             sverdlovskSeeder.seedIfEmpty()
+            fishActivityRuleSeeder.seedIfEmpty()
+            Log.d("DatabaseInitializer", "FishActivityRuleSeeder завершён")
+
         }
     }
 }

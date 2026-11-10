@@ -14,10 +14,7 @@ fun FishingBan.isActiveOn(date: LocalDate): Boolean {
                                 !date.isAfter(validUntil)
                         )
 
-    if (!recordIsActive) return false
-
-    // 2. Проверяем сезон.
-    return if (seasonRepeatsAnnually) {
+    return recordIsActive && if (seasonRepeatsAnnually) {
 
         val startMonth = seasonStartMonth ?: return false
         val startDay = seasonStartDay ?: return false
@@ -57,4 +54,6 @@ fun FishingBan.isActiveOn(date: LocalDate): Boolean {
         !date.isBefore(start) &&
                 !date.isAfter(end)
     }
+
+    // 2. Проверяем сезон.
 }

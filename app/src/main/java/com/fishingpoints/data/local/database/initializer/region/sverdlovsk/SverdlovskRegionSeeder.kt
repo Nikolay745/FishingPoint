@@ -25,23 +25,27 @@ internal class SverdlovskRegionSeeder @Inject constructor(
     suspend fun seedIfEmpty() {
         val region = regionDao.getOrCreateRegion(REGION_NAME)
 
-        if (regionRuleDao.getRulesCount(region.id) == 0) insertRules(region.id)
+        if (regionRuleDao.getRulesCount(region.id) == 0) insertRegionRule(region.id)
         if (dailyAllowanceDao.getAllowancesCount(region.id) == 0) insertAllowances(region.id)
         if (fishingBanDao.getBansCount(region.id) == 0) insertBans(region.id)
     }
 
-    private suspend fun insertRules(regionId: Long) {
-        regionRuleDao.insertRule(
+    private suspend fun insertRegionRule(regionId: Long) {
+
+        regionRuleDao.createNewRule(
             RegionRule(
                 regionId = regionId,
+                ruleGroupId = 0L,
+                title = "Общие нормы вылова",
+                description = """
+                Правила любительского рыболовства
+                для Свердловской области.""".trimIndent(),
                 validFrom = LocalDate.of(2026, 1, 1),
                 validUntil = null,
                 dailyWeightLimit = 10_000,
                 allowOversizeFish = true,
                 maxDailyNorms = 2,
-                notes = """Правила любительского рыболовства
-                для Свердловской области.
-
+                notes = """
                 Общая суточная норма вылова:
                 не более 10 кг для одного гражданина.
 
@@ -54,20 +58,17 @@ internal class SverdlovskRegionSeeder @Inject constructor(
                 Для карася, плотвы и окуня действует
                 суммарная норма 10 кг.
 
-                Общая суточная норма для видов, перечисленных
-                в Правилах, составляет не более 10 кг или
-                один экземпляр, если его вес превышает 10 кг.
-
                 Если гражданин находится на водоёме более суток,
                 допускается добыча и хранение улова в пределах
                 двух суточных норм согласно Правилам рыболовства.
-"""
+            """.trimIndent()
             )
         )
     }
 
 
-private suspend fun insertAllowances(regionId: Long) {
+
+    private suspend fun insertAllowances(regionId: Long) {
     val validFrom = LocalDate.of(2026, 1, 1)
     val fishMap = fishDao.fishByName()
 

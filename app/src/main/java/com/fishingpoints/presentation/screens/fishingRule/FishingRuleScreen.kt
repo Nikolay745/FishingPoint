@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DrawerState
@@ -38,9 +42,11 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +58,7 @@ import androidx.navigation.NavController
 import com.fishingpoints.data.local.entity.DailyAllowance
 import com.fishingpoints.data.local.entity.FishingBan
 import com.fishingpoints.data.local.entity.RegionRule
+import com.fishingpoints.presentation.formatting.formatFishingDate
 import com.fishingpoints.presentation.screens.fishingRule.cards.FishLimitCard
 import com.fishingpoints.presentation.screens.fishingRule.cards.FishingBanCard
 import com.fishingpoints.presentation.screens.fishingRule.cards.RegionRuleCard
@@ -59,37 +66,100 @@ import com.fishingpoints.presentation.screens.fishingRule.component.RegionSelect
 import com.fishingpoints.presentation.screens.fishingRule.dialogs.AddDailyAllowanceDialog
 import com.fishingpoints.presentation.screens.fishingRule.dialogs.AddFishingBanDialog
 import com.fishingpoints.presentation.screens.fishingRule.dialogs.AddRegionRuleDialog
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FishingRuleScreen(
     drawerState: DrawerState,
-    scope: CoroutineScope,
+
     viewModel: FishingRuleViewModel = hiltViewModel(),
     navController: NavController
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var currentDialog by remember { mutableStateOf<FishLimitDialog>(FishLimitDialog.None) }
+    val scope = rememberCoroutineScope()
+
+
+    var currentDialog by remember {
+        mutableStateOf<FishLimitDialog>(FishLimitDialog.None)
+    }
+
+
+
+    var pendingRegionRule by remember {
+        mutableStateOf<RegionRule?>(null)
+    }
+
+    var overlappingRules by remember {
+        mutableStateOf<List<RegionRule>>(emptyList())
+    }
+
+    var showOverlapWarning by remember {
+        mutableStateOf(false)
+    }
+
+    var isCheckingOverlap by remember {
+        mutableStateOf(false)
+    }
+
+
+
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf("📋 Правила", "📊 Нормы", "🚫 Запреты")
     val hasRegion = state.selectedRegionId != null
+
+    var showAllRuleHistory by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val displayedRules = if (showAllRuleHistory) {
+        state.allRegionRules
+    } else {
+        state.regionRules
+    }
+
 
 
     LaunchedEffect(Unit) {
         viewModel.onScreenOpened()
     }
+    fun checkAndSaveRegionRule(rule: RegionRule) {
+        scope.launch {
+            isCheckingOverlap = true
 
+            try {
+                val overlaps = viewModel.getOverlappingRules(rule)
+
+                pendingRegionRule = rule
+                overlappingRules = overlaps
+
+                if (overlaps.isNotEmpty()) {
+                    showOverlapWarning = true
+                } else {
+                    if (rule.id == 0L) {
+                        viewModel.insertRegionRule(rule)
+                    } else {
+                        viewModel.updateRegionRule(rule)
+                    }
+
+                    currentDialog = FishLimitDialog.None
+
+                }
+            } finally {
+                isCheckingOverlap = false
+            }
+        }
+    }
     // =========================
     // DIALOGS
     // =========================
-    when (val dialog = currentDialog) {
+    when
+            (val dialog = currentDialog)
+    {
         is FishLimitDialog.EditAllowance -> {
             AddDailyAllowanceDialog(
                 fishList = state.fishList,
@@ -139,19 +209,61 @@ fun FishingRuleScreen(
                 rule = dialog.rule,
                 onDismiss = {
                     currentDialog = FishLimitDialog.None
+
                 },
                 onSave = { rule ->
-                    if (rule.id == 0L) {
-                        viewModel.insertRegionRule(rule)
-                    } else {
-                        viewModel.updateRegionRule(rule)
-                    }
-                    currentDialog = FishLimitDialog.None
+                    checkAndSaveRegionRule(rule)
                 }
             )
         }
+        is FishLimitDialog.CreateRegionRuleRevision -> {
+
+            AddRegionRuleDialog(
+                regionList = state.regionList,
+                selectedRegionId = dialog.rule.regionId,
+                selectedDate = dialog.rule.validFrom,
+                rule = dialog.rule.copy(
+                    id = 0L
+                ),
+                onDismiss = {
+                    currentDialog = FishLimitDialog.None
+                },
+//                onSave = { newRule ->
+//
+//                    scope.launch {
+//
+//                        try {
+//                            viewModel.createRegionRuleRevision(
+//                                previousRule = dialog.rule,
+//                                newRule = newRule
+//                            )
+//
+//                            currentDialog = FishLimitDialog.None
+//
+//                        } catch (e: Exception) {
+//                            // Обработку ошибки добавим отдельно.
+//                        }
+//                    }
+//                }
+                onSave = { newRule ->
+
+                    viewModel.createRegionRuleRevision(
+                        previousRule = dialog.rule,
+                        newRule = newRule
+                    )
+
+                    currentDialog = FishLimitDialog.None
+                }
+
+            )
+        }
+
+
+
+
 
         FishLimitDialog.None -> Unit
+        null -> Unit
     }
 
     // =========================
@@ -162,9 +274,8 @@ fun FishingRuleScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Правила рыбалки на ${state.selectedDate.format(
-                            DateTimeFormatter.ofPattern("dd.MM.yyyy")
-                        )}"
+                        text = "Правила рыбалки на ${formatFishingDate(state.selectedDate)}"
+
                     )
                 },
                 navigationIcon = {
@@ -183,7 +294,7 @@ fun FishingRuleScreen(
                 }
             )
         },
-        bottomBar =  {
+        bottomBar = {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 2.dp
@@ -203,20 +314,55 @@ fun FishingRuleScreen(
             FishLimitFab(
                 selectedTab = selectedTab,
                 hasRegion = hasRegion,
-                hasRegionRule = state.regionRule != null,
-                onAddAllowance = { currentDialog = FishLimitDialog.EditAllowance() },
-                onAddBan = { currentDialog = FishLimitDialog.EditBan() },
-                onAddRule = { currentDialog = FishLimitDialog.EditRegionRule() }
+                onAddAllowance = {
+                    currentDialog = FishLimitDialog.EditAllowance()
+                },
+                onAddBan = {
+                    currentDialog = FishLimitDialog.EditBan()
+                },
+                onAddRule = {
+                    currentDialog = FishLimitDialog.EditRegionRule()
+                }
             )
         }
+
 
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Top
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (showAllRuleHistory) {
+                        "История правил"
+                    } else {
+                        "Действующие правила"
+                    },
+                    style = MaterialTheme.typography.titleMedium
+                )
+                TextButton(
+                    onClick = {
+                        showAllRuleHistory = !showAllRuleHistory
+                    }
+                ) {
+                    Text(
+                        if (showAllRuleHistory) {
+                            "Действующие"
+                        } else {
+                            "Вся история"
+                        }
+                    )
+                }
+            }
             // =========================
             // SELECTORS
             // =========================
@@ -227,6 +373,30 @@ fun FishingRuleScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
+//                Text(
+//                    text = if (showAllRuleHistory) {
+//                        "История правил"
+//                    } else {
+//                        "Действующие правила"
+//                    },
+//                    style = MaterialTheme.typography.titleMedium
+//                )
+
+//                TextButton(
+//                    onClick = {
+//                        showAllRuleHistory = !showAllRuleHistory
+//                    }
+//                ) {
+//                    Text(
+//                        if (showAllRuleHistory) {
+//                            "Действующие"
+//                        } else {
+//                            "Вся история"
+//                        }
+//                    )
+//                }
+
                 RegionSelector(
                     regions = state.regionList,
                     selectedRegionId = state.selectedRegionId,
@@ -284,6 +454,26 @@ fun FishingRuleScreen(
                 }
             }
 
+            state.errorMessage?.let { message ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
 
             // =========================
             // CONTENT
@@ -303,37 +493,49 @@ fun FishingRuleScreen(
                     // RULE TAB
                     // =========================
                     0 -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            state.regionRule?.let { rule ->
-                                item(key = "region_rule") {
+                        if (displayedRules.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    if (showAllRuleHistory) {
+                                        "История правил пока пуста"
+                                    } else {
+                                        "На выбранную дату правила не найдены"
+                                    }
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(
+                                    items = displayedRules,
+                                    key = { it.id }
+                                ) { rule ->
                                     RegionRuleCard(
                                         rule = rule,
+                                        selectedDate = state.selectedDate,
                                         onEdit = {
-                                            currentDialog = FishLimitDialog.EditRegionRule(rule)
+                                            currentDialog =
+                                                FishLimitDialog.EditRegionRule(rule)
                                         },
-                                        onDelete = { viewModel.deleteRegionRule(rule) }
+                                        onCreateRevision = {
+                                            currentDialog =
+                                                FishLimitDialog.CreateRegionRuleRevision(rule)
+                                        },
+                                        onDelete = {
+                                            viewModel.deleteRegionRule(rule)
+                                        }
                                     )
-                                }
-                            }
-
-                            if (state.regionRule == null) {
-                                item(key = "empty_rule") {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 32.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("Правила региона не добавлены")
-                                    }
                                 }
                             }
                         }
                     }
+
 
                     // =========================
                     // ALLOWANCE
@@ -361,11 +563,12 @@ fun FishingRuleScreen(
                                 ) { allowance ->
                                     val fishName = state.fishList
                                         .find { it.id == allowance.fishId }
-                                        ?.name
+                                        ?.name ?: "Неизвестная рыба"
+
 
                                     FishLimitCard(
                                         allowance = allowance,
-                                        name = fishName.toString(),
+                                        name = fishName,
                                         onEdit = {
                                             currentDialog = FishLimitDialog.EditAllowance(allowance)
                                         },
@@ -418,36 +621,112 @@ fun FishingRuleScreen(
             }
         }
     }
+
+    if (showOverlapWarning) {
+
+        AlertDialog(
+            onDismissRequest = {
+                showOverlapWarning = false
+                pendingRegionRule = null
+            },
+
+            title = {
+                Text("Пересечение периодов")
+            },
+
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+
+                    Text(
+                        "В выбранном периоде уже действуют следующие правила:"
+                    )
+
+                    overlappingRules.forEach { rule ->
+
+                        Text(
+                            text = "• ${rule.title}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        "Это не запрещает сохранение. Проверьте, " +
+                                "не противоречат ли правила друг другу."
+                    )
+                }
+            },
+
+            confirmButton = {
+                TextButton(
+                    onClick = {
+
+                        pendingRegionRule?.let { rule ->
+
+                            if (rule.id == 0L) {
+                                viewModel.insertRegionRule(rule)
+                            } else {
+                                viewModel.updateRegionRule(rule)
+                            }
+                        }
+
+                        pendingRegionRule = null
+                        showOverlapWarning = false
+                        currentDialog = FishLimitDialog.None
+
+                    }
+                ) {
+                    Text("Всё равно сохранить")
+                }
+            },
+
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingRegionRule = null
+                        showOverlapWarning = false
+                    }
+                ) {
+                    Text("Вернуться")
+                }
+            }
+        )
+    }
+
+
+
+
+
 }
 
 @Composable
 private fun FishLimitFab(
     selectedTab: Int,
     hasRegion: Boolean,
-    hasRegionRule: Boolean,
     onAddAllowance: () -> Unit,
     onAddBan: () -> Unit,
     onAddRule: () -> Unit
 ) {
-    if (!hasRegion) {
-        return
-    }
+    if (!hasRegion) return
 
     when (selectedTab) {
 
+        // Правила
         0 -> {
-            if (!hasRegionRule) {
-                FloatingActionButton(
-                    onClick = onAddRule
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Добавить правило"
-                    )
-                }
+            FloatingActionButton(
+                onClick = onAddRule
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Добавить правило"
+                )
             }
         }
 
+        // Нормы
         1 -> {
             FloatingActionButton(
                 onClick = onAddAllowance
@@ -459,6 +738,7 @@ private fun FishLimitFab(
             }
         }
 
+        // Запреты
         2 -> {
             FloatingActionButton(
                 onClick = onAddBan
@@ -474,11 +754,28 @@ private fun FishLimitFab(
 
 
 sealed interface FishLimitDialog {
+
     data object None : FishLimitDialog
-    data class EditAllowance(val allowance: DailyAllowance? = null) : FishLimitDialog
-    data class EditBan(val ban: FishingBan? = null) : FishLimitDialog
-    data class EditRegionRule(val rule: RegionRule? = null) : FishLimitDialog
+
+    data class EditAllowance(
+        val allowance: DailyAllowance? = null
+    ) : FishLimitDialog
+
+    data class EditBan(
+        val ban: FishingBan? = null
+    ) : FishLimitDialog
+
+    // Редактирование существующей редакции
+    data class EditRegionRule(
+        val rule: RegionRule? = null
+    ) : FishLimitDialog
+
+    // Создание новой редакции
+    data class CreateRegionRuleRevision(
+        val rule: RegionRule
+    ) : FishLimitDialog
 }
+
 
 @Composable
 fun DateSelector(
@@ -504,20 +801,23 @@ fun DateSelector(
         Spacer(Modifier.width(8.dp))
 
         Text(
-            text = selectedDate.format(
-                DateTimeFormatter.ofPattern("dd.MM.yyyy")
-            )
+            text = formatFishingDate(selectedDate)
         )
+
     }
 
-    if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
+
+    val datePickerState = key(selectedDate) {
+        rememberDatePickerState(
             initialSelectedDateMillis = selectedDate
                 .atStartOfDay(ZoneOffset.UTC)
                 .toInstant()
                 .toEpochMilli()
         )
+    }
 
+
+    if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = {
                 showDatePicker = false

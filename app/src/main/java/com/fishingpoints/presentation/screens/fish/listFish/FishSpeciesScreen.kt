@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
@@ -69,13 +70,10 @@ fun FishSpeciesScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedSeason by viewModel.selectedSeason.collectAsStateWithLifecycle()
     val selectedTimeOfDay by viewModel.selectedTimeOfDay.collectAsStateWithLifecycle()
-
     var deletingFish by remember { mutableStateOf<Fish?>(null) }
     var showSeasonSheet by remember { mutableStateOf(false) }
     var showTimeOfDaySheet by remember { mutableStateOf(false) }
-
     val snackbarHostState = remember { SnackbarHostState() }
-
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -376,13 +374,24 @@ fun FilterItem(title: String, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge
             )
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Выбрано",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

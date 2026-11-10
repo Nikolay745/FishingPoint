@@ -2,7 +2,9 @@ package com.fishingpoints.presentation.formatting
 
 import com.fishingpoints.presentation.screens.settings.TemperatureUnit
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 
@@ -72,6 +74,16 @@ fun formatFishingDate(date: Date): String {
         Locale.getDefault()
     ).format(date)
 }
+
+fun formatFishingDate(date: LocalDate): String {
+    return date.format(
+        DateTimeFormatter.ofPattern(
+            "dd.MM.yyyy",
+            Locale.getDefault()
+        )
+    )
+}
+
 
 fun formatFishingTime(date: Date?): String {
     if (date == null) return "—"

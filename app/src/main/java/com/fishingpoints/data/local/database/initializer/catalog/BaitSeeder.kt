@@ -58,7 +58,7 @@ internal object BaitData {
                         "\n" +
                         "В холодильнике при +2…+4 °C в опилках или отрубях — так не окукливается неделями "
             ),
-            fishNames = listOf("Лещ", "Карась", "Плотва", "Красноперка", "Чехонь")
+            fishNames = listOf("Лещ", "Карась", "Плотва", "Красноперка", "Чехонь", "Язь")
         ),
 
         InitialBait(
@@ -68,7 +68,7 @@ internal object BaitData {
                 bestSeason = Season.SUMMER,
                 description = "Незаменимы при ловле поверху (на течении) голавля или язя"
             ),
-            fishNames = listOf("Голавль")
+            fishNames = listOf("Голавль", "Язь")
         ),
 
         InitialBait(
@@ -80,7 +80,7 @@ internal object BaitData {
                         "(по 1-3 штуки чулком или колечком) из-за нежности тельца. " +
                         "Окунь на него отлично ловится круглый год."
             ),
-            fishNames = listOf("Окунь")
+            fishNames = listOf("Окунь", "Язь")
         ),
 
         InitialBait(
@@ -91,7 +91,7 @@ internal object BaitData {
                 description = """Актуальна по первому и последнему льду. Имеет мягкое светлое тельце. 
                             Насаживается под головку на крючки с длинным цевьем """
             ),
-            fishNames = listOf("Лещ", "Голавль", "Плотва")
+            fishNames = listOf("Лещ", "Голавль", "Плотва", "Язь")
         ),
 
         InitialBait(

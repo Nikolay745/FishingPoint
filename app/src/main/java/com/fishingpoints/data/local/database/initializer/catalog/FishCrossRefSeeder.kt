@@ -55,7 +55,7 @@ internal class FishCrossRefSeeder @Inject constructor(
         "Рыбец" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
         "Сазан" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
         "Сиг" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER),
-        "Сом" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
+        "Сом" to listOf(Season.SPRING, Season.SUMMER),
         "Стерлядь" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
         "Судак" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER),
         "Таймень" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
@@ -64,7 +64,8 @@ internal class FishCrossRefSeeder @Inject constructor(
         "Чехонь" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
         "Хариус сибирский" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
         "Хариус европейский" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN),
-        "Щука" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER)
+        "Щука" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN, Season.WINTER),
+        "Язь" to listOf(Season.SPRING, Season.SUMMER, Season.AUTUMN)
     )
 
 
@@ -98,7 +99,8 @@ internal class FishCrossRefSeeder @Inject constructor(
         "Чехонь" to listOf(TimeOfDay.DAWN, TimeOfDay.MORNING, TimeOfDay.DAY, TimeOfDay.EVENING),
         "Хариус сибирский" to listOf(TimeOfDay.DAWN, TimeOfDay.MORNING, TimeOfDay.EVENING),
         "Хариус европейский" to listOf(TimeOfDay.DAWN, TimeOfDay.MORNING, TimeOfDay.EVENING),
-        "Щука" to listOf(TimeOfDay.DAWN, TimeOfDay.MORNING, TimeOfDay.EVENING, TimeOfDay.DUSK)
+        "Щука" to listOf(TimeOfDay.DAWN, TimeOfDay.MORNING, TimeOfDay.EVENING, TimeOfDay.DUSK),
+        "Язь" to listOf(TimeOfDay.MORNING, TimeOfDay.EVENING)
     )
 
 }

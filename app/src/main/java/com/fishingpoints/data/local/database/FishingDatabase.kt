@@ -18,6 +18,7 @@ import com.fishingpoints.data.local.database.dao.BaitDao
 import com.fishingpoints.data.local.database.dao.DailyAllowanceDao
 import com.fishingpoints.data.local.database.dao.EquipmentDao
 import com.fishingpoints.data.local.database.dao.FeedDao
+import com.fishingpoints.data.local.database.dao.FishActivityRuleDao
 import com.fishingpoints.data.local.database.dao.FishDao
 import com.fishingpoints.data.local.database.dao.FishingBanDao
 import com.fishingpoints.data.local.database.dao.FishingCatchDao
@@ -31,6 +32,7 @@ import com.fishingpoints.data.local.database.dao.TackleDao
 import com.fishingpoints.data.local.entity.Feed
 import com.fishingpoints.data.local.entity.FeedFishCrossRef
 import com.fishingpoints.data.local.entity.Fish
+import com.fishingpoints.data.local.entity.FishActivityRule
 import com.fishingpoints.data.local.entity.FishSeasonCrossRef
 import com.fishingpoints.data.local.entity.FishTimeOfDayCrossRef
 import com.fishingpoints.data.local.entity.FishingBan
@@ -59,7 +61,8 @@ import com.fishingpoints.data.local.entity.RegionRule
         FishingEntriesBaitCrossRef::class,
         Feed::class,
         FeedFishCrossRef::class,
-        EquipmentEntity::class
+        EquipmentEntity::class,
+        FishActivityRule::class
     ],
     version = 1,
     exportSchema = false
@@ -81,4 +84,5 @@ abstract class FishingDatabase : RoomDatabase() {
     abstract fun dailyAllowanceDao(): DailyAllowanceDao
     abstract fun statisticsDao(): StatisticsDao
     abstract fun equipmentDao(): EquipmentDao
+    abstract fun fishActivityRuleDao(): FishActivityRuleDao
 }

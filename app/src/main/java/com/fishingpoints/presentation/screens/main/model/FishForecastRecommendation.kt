@@ -1,5 +1,7 @@
 package com.fishingpoints.presentation.screens.main.model
 
+import com.fishingpoints.data.local.enums.FeedingActivity
+import com.fishingpoints.data.local.enums.RuleConfidence
 import com.fishingpoints.data.local.enums.TimeOfDay
 
 data class FishForecastRecommendation(
@@ -12,5 +14,10 @@ data class FishForecastRecommendation(
     val tipsBaits: String?,
     val tackles: String?,
     val baitForFish: String?,
-    val bestTimes: List<FishTimeForecast> = emptyList()
+    val bestTimes: List<FishTimeForecast> = emptyList(),
+
+    // Активность по правилам
+    val feedingActivity: FeedingActivity = FeedingActivity.NONE,
+    val activityDescription: String? = null,
+    val ruleConfidence: RuleConfidence? = null
 )

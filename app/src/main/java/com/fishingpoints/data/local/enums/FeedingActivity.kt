@@ -7,7 +7,7 @@ enum class FeedingActivity(
 ) { HIGH("Высокая", "🐡"),
     MEDIUM("Средняя", "🐠"),
     LOW("Низкая", "🐟"),
-    NONE("Нет данных", "🐙"),
+    NONE("Клёв отсутствует", "🐙"),
     VERY_HIGH("Очень высокая", "🐙");
 
     val displayText: String

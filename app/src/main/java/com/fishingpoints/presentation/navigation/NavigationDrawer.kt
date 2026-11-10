@@ -49,11 +49,12 @@ sealed class DrawerScreen(val route: String, val title: String, val icon: @Compo
     object FishingMap : DrawerScreen("fishingMap", "\uD83D\uDDFA\uFE0F Карта", {  })
     object FishSpecies : DrawerScreen("fish_species", "\uD83D\uDC1F Виды рыб", {  })
 
+    object FishActivityRule : DrawerScreen("fish_activity_rules", "\uD83D\uDC1F Особенности поведения рыб", {  })
     object FishCatchLimits : DrawerScreen("fishingRules", "\uD83D\uDCDC Правила рыбалки", { })
 
     object Region : DrawerScreen("region", "\uD83C\uDF0D Регионы", {  })
     object Location : DrawerScreen("location", "\uD83D\uDCCD Места рыбалок", {  })
-    object Settings : DrawerScreen("settings", "⚙\uFE0F Настройки", { })
+
     object Baits : DrawerScreen("bait", "\uD83E\uDEB1 Насадки и наживки", {  })
 
     object Feeds : DrawerScreen("feed", "\uD83E\uDEA3 Прикормки и приманки ", {  })
@@ -64,11 +65,15 @@ sealed class DrawerScreen(val route: String, val title: String, val icon: @Compo
 
     object Statistics : DrawerScreen("statistic", "\uD83D\uDCCA Статистика", {  })
 
-    object About : DrawerScreen("about", "ℹ\uFE0F О приложении", {  })
-
     object Security : DrawerScreen("security", "\uD83E\uDDBA Безопасность", { })
 
     object Equipment : DrawerScreen("equipment", "🎒 Экипировка", { })
+
+    object Settings : DrawerScreen("settings", "⚙\uFE0F Настройки", { })
+
+    object About : DrawerScreen("about", "ℹ\uFE0F О приложении", {  })
+
+
 
 
 
@@ -108,6 +113,10 @@ fun NavigationDrawer(
         ),
 
         DrawerItemUi(
+            DrawerScreen.FishActivityRule,
+        ),
+
+        DrawerItemUi(
             DrawerScreen.Baits,
             baitsCount
         ),
@@ -129,6 +138,9 @@ fun NavigationDrawer(
         DrawerItemUi(
             DrawerScreen.Statistics,
         ),
+
+
+
 
         DrawerItemUi(
             DrawerScreen.Diary, // Дневник

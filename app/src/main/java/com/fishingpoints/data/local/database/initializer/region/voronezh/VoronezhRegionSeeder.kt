@@ -25,34 +25,34 @@ internal class VoronezhRegionSeeder @Inject constructor(
     suspend fun seedIfEmpty() {
         val region = regionDao.getOrCreateRegion(REGION_NAME)
 
-        if (regionRuleDao.getRulesCount(region.id) == 0) insertRules(region.id)
+        if (regionRuleDao.getRulesCount(region.id) == 0) insertRegionRule(region.id)
         if (dailyAllowanceDao.getAllowancesCount(region.id) == 0) insertAllowances(region.id)
         if (fishingBanDao.getBansCount(region.id) == 0) insertBans(region.id)
     }
 
-    private suspend fun insertRules(regionId: Long) {
-        regionRuleDao.insertRule(
+    private suspend fun insertRegionRule(regionId: Long) {
+        regionRuleDao.createNewRule(
             RegionRule(
                 regionId = regionId,
+                title = "  Общие правила рыболовства",
+                description = "  Регион: Воронежская область.\n" +
+                        "Рыбохозяйственный бассейн: Азово-Черноморский.\n" +
+                        "\n" +
+                        "Общая суточная норма для рек составляет 5 кг.\n" +
+                        "Для отдельных видов водных биоресурсов предусмотрены\n" +
+                        "специальные ограничения и исключения.\n" +
+                        "\n" +
+                        "  При пребывании на водоёме более одних суток\n" +
+                        "допускается не более двух суточных норм.\n" +
+                        "\n" +
+                        "  Необходимо соблюдать минимальные размеры рыб,\n" +
+                        "сезонные запреты и ограничения на конкретных водоёмах.",
                 validFrom = LocalDate.of(2026, 1, 1),
                 validUntil = null,
                 dailyWeightLimit = 5_000,
                 allowOversizeFish = true,
                 maxDailyNorms = 2,
-                notes = """
-                Регион: Воронежская область.
-                Рыбохозяйственный бассейн: Азово-Черноморский.
-
-                Общая суточная норма для рек составляет 5 кг.
-                Для отдельных видов водных биоресурсов предусмотрены
-                специальные ограничения и исключения.
-
-                При пребывании на водоёме более одних суток
-                допускается не более двух суточных норм.
-
-                Необходимо соблюдать минимальные размеры рыб,
-                сезонные запреты и ограничения на конкретных водоёмах.
-
+                notes = """ 
                 Источник: Правила рыболовства для Азово-Черноморского
                 рыбохозяйственного бассейна, пункт 55.5.
             """.trimIndent()

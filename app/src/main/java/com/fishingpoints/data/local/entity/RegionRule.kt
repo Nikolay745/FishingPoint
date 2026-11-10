@@ -6,8 +6,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.LocalDate
 
-// региональные правила
-@Entity(tableName = "region_rules",
+// Региональные правила рыболовства
+@Entity(
+    tableName = "region_rules",
     foreignKeys = [
         ForeignKey(
             entity = Region::class,
@@ -20,16 +21,35 @@ import java.time.LocalDate
         Index("regionId"),
         Index(
             value = ["regionId", "validFrom"]
+        ),
+        Index(
+            value = ["regionId", "ruleGroupId", "validFrom"]
         )
-    ])
+    ]
+)
 data class RegionRule(
+
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+
     val regionId: Long,
+
+    // Группа редакций одного логического правила
+    val ruleGroupId: Long = 0,
+
+    val title: String,
+
+    val description: String,
+
     val validFrom: LocalDate,
+
     val validUntil: LocalDate? = null,
-    val dailyWeightLimit: Int, // граммы
-    val allowOversizeFish: Boolean = true,
-    val maxDailyNorms: Int = 2,
+
+    val dailyWeightLimit: Int? = null,
+
+    val allowOversizeFish: Boolean? = null,
+
+    val maxDailyNorms: Int? = null,
+
     val notes: String? = null
 )

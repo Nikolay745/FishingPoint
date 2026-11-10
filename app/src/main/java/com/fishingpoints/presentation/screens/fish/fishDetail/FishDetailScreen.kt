@@ -33,6 +33,7 @@ import com.fishingpoints.data.local.entity.Bait
 import com.fishingpoints.data.local.entity.BaitWithFish
 import com.fishingpoints.presentation.screens.bait.BaitInfoDialog
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.BaitCard
+import com.fishingpoints.presentation.screens.fish.fishDetail.cards.FishActivityCard
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.FishInfoCard
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.InfoCard
 import com.fishingpoints.presentation.screens.fish.fishDetail.cards.ParametersCard
@@ -92,6 +93,10 @@ private fun FishDetailContent(
 ) {
     val fish = state.fish ?: return
     var selectedBait by remember { mutableStateOf<Bait?>(null) }
+//    var selectedBait by remember(fishId) {
+//        mutableStateOf<Bait?>(null)
+//    }
+
 
     Scaffold(
         topBar = {
@@ -124,6 +129,15 @@ private fun FishDetailContent(
         ) {
             item { FishInfoCard(fish) }
             item { ParametersCard(fish) }
+            item {
+                FishActivityCard(
+                    result = state.activityResult,
+                    waterTemperature = state.waterTemperature,
+                    isEstimatedTemperature = state.isEstimatedTemperature,
+                    isLoading = state.isActivityLoading
+                )
+            }
+
 
             if (state.tackles.isNotEmpty()) {
                 item {
@@ -148,22 +162,7 @@ private fun FishDetailContent(
                     }
                 }
             }
-//            if (state.baits.isNotEmpty()) {
-//                item {
-//                    InfoCard("🪱 Рекомендуемые насадки") {
-////                        state.baits.forEach { BaitCard(it) }
-//                        state.baits.forEach { bait ->
-//                            BaitCard(
-//                                bait = bait,
-//                                onClick = {
-//                                    navController.navigate("bait_detail/${bait.id}")
-//                                }
-//                            )
-//                        }
-//
-//                    }
-//                }
-//            }
+
             if (state.baits.isNotEmpty()) {
                 item {
                     InfoCard("🪱 Рекомендуемые насадки") {

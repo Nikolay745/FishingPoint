@@ -72,6 +72,8 @@ class FishingService @Inject constructor(
         return WeatherForTime(
             temperature = item.main.temp,
             windSpeed = item.wind.speed,
+            windDirection = item.wind.deg,
+
             cloudiness = item.clouds.all,
             precipitation = item.weather
                 .firstOrNull()
@@ -201,6 +203,7 @@ class FishingService @Inject constructor(
 
             Candidate(
                 fishingTime = BestFishingTime(
+                    date = dayInfo.date,
                     start = time,
                     end = endTime,
                     activityLevel = activityLevel,
@@ -303,10 +306,7 @@ class FishingService @Inject constructor(
         val timeMinutes = time.toSecondOfDay() / 60
         val targetMinutes = target.toSecondOfDay() / 60
 
-        val difference = Math.floorMod(
-            timeMinutes - targetMinutes + 720,
-            1440
-        ) - 720
+        val difference = Math.floorMod(timeMinutes - targetMinutes + 720, 1440) - 720
 
         return difference >= -windowMinutes &&
                 difference < windowMinutes
@@ -481,6 +481,7 @@ class FishingService @Inject constructor(
             }
 
             BestFishingTime(
+                date = dayInfo.date,
                 start = time,
                 end = intervalEnd.toLocalTime(),
                 activityLevel = activityLevel,
@@ -545,6 +546,7 @@ data class FishingForecast(
 data class WeatherForTime(
     val temperature: Double?,
     val windSpeed: Double,
+    val windDirection: Int = 0,
     val cloudiness: Int,
     val precipitation: String,
     val pressureTrend: PressureTrend

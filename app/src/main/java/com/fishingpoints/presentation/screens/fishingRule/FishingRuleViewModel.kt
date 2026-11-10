@@ -43,11 +43,13 @@ class FishingRuleViewModel @Inject constructor(
     private val locationProvider: LocationProvider,
     private val geocoderService: GeocoderService
 ) : ViewModel() {
-
     companion object {
         private const val SELECTED_REGION_ID = "selected_region_id"
         private const val SELECTED_DATE = "selected_date"
-        private const val SELECTED_YEAR = "selected_year"
+
+        private const val REGION_SELECTED_MANUALLY = "region_selected_manually"
+
+
     }
 
     // --------------------------------------------------
@@ -60,17 +62,10 @@ class FishingRuleViewModel @Inject constructor(
             initialValue = null
         )
 
-
-    //    private val selectedDate = MutableStateFlow(LocalDate.now())
     private val selectedDate =
         savedStateHandle.getStateFlow(
             key = SELECTED_DATE,
             initialValue = LocalDate.now()
-        )
-
-    private val selectedYear =   savedStateHandle.getStateFlow(
-            key = SELECTED_YEAR,
-            initialValue = LocalDate.now().year
         )
 
     private val isDetectingRegion = MutableStateFlow(false)
@@ -84,7 +79,12 @@ class FishingRuleViewModel @Inject constructor(
      *
      * Защищает ручной выбор от автоматического определения.
      */
-    private var regionSelectedManually = false
+    private val regionSelectedManually =
+        savedStateHandle.getStateFlow(
+            REGION_SELECTED_MANUALLY,
+            false
+        )
+
 
 
     // --------------------------------------------------
@@ -97,7 +97,7 @@ class FishingRuleViewModel @Inject constructor(
     private val regionFlow =
         regionRepository.getAllRegions()
 
-// --------------------------------------------------
+    // --------------------------------------------------
     // DATE-DEPENDENT FLOWS
     // --------------------------------------------------
 
@@ -123,7 +123,7 @@ class FishingRuleViewModel @Inject constructor(
             }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val regionRuleFlow: Flow<RegionRule?> =
+    private val regionRulesFlow: Flow<List<RegionRule>> =
         combine(
             selectedRegionId,
             selectedDate
@@ -134,11 +134,25 @@ class FishingRuleViewModel @Inject constructor(
             .flatMapLatest { (regionId, date) ->
 
                 if (regionId == null) {
-                    flowOf(null)
+                    flowOf(emptyList())
                 } else {
-                    regulationRepository.getRegionRuleForDate(
+                    regulationRepository.getRegionRulesForDate(
                         regionId = regionId,
                         date = date
+                    )
+                }
+            }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val allRegionRulesFlow: Flow<List<RegionRule>> =
+        selectedRegionId
+            .flatMapLatest { regionId ->
+
+                if (regionId == null) {
+                    flowOf(emptyList())
+                } else {
+                    regulationRepository.getAllRegionRules(
+                        regionId = regionId
                     )
                 }
             }
@@ -157,10 +171,11 @@ class FishingRuleViewModel @Inject constructor(
                 if (regionId == null) {
                     flowOf(emptyList())
                 } else {
-                    regulationRepository.getFishingBansForDate(
+                    regulationRepository.getActiveFishingBans(
                         regionId = regionId,
                         date = date
                     )
+
                 }
             }
 
@@ -178,7 +193,7 @@ class FishingRuleViewModel @Inject constructor(
         }
 
         return allowances.sortedWith(
-            compareBy<DailyAllowance>(
+            compareBy(
                 { fishNames[it.fishId] ?: "" },
                 { it.id }
             )
@@ -210,36 +225,36 @@ class FishingRuleViewModel @Inject constructor(
             )
         }
 
-    /**
-     * Добавляем выбранный год отдельно,
-     * не связывая его автоматически с выбранной датой.
-     */
-    private val baseStateWithYear: Flow<FishLimitUiState> =
-        combine(
-            baseState,
-            selectedYear
-        ) { state, year ->
 
-            state.copy(
-                selectedYear = year
-            )
-        }
 
-// --------------------------------------------------
+    // --------------------------------------------------
     // UI STATE
     // --------------------------------------------------
 
+    // --------------------------------------------------
+// UI STATE
+// --------------------------------------------------
+
     val uiState: StateFlow<FishLimitUiState> =
         combine(
-            baseStateWithYear,
-            regionRuleFlow,
+            baseState,
+            regionRulesFlow,
+            allRegionRulesFlow,
             fishingBanFlow,
             isDetectingRegion,
             errorMessage
-        ) { state, rule, bans, detectingRegion, error ->
+        ) { values: Array<Any?> ->
+
+            val state = values[0] as FishLimitUiState
+            val rules = values[1] as List<RegionRule>
+            val allRules = values[2] as List<RegionRule>
+            val bans = values[3] as List<FishingBan>
+            val detectingRegion = values[4] as Boolean
+            val error = values[5] as String?
 
             state.copy(
-                regionRule = rule,
+                regionRules = rules,
+                allRegionRules = allRules,
                 fishingBans = bans,
                 isDetectingRegion = detectingRegion,
                 errorMessage = error
@@ -250,7 +265,10 @@ class FishingRuleViewModel @Inject constructor(
             initialValue = FishLimitUiState()
         )
 
-// --------------------------------------------------
+
+
+
+    // --------------------------------------------------
     // DATE
     // --------------------------------------------------
 
@@ -262,13 +280,7 @@ class FishingRuleViewModel @Inject constructor(
     fun showCurrentDate() {
         selectDate(LocalDate.now())
     }
-// --------------------------------------------------
-    // YEAR
-    // --------------------------------------------------
 
-    fun selectYear(year: Int) {
-        savedStateHandle[SELECTED_YEAR] = year
-    }
 
     // --------------------------------------------------
     // REGION SELECTION
@@ -277,7 +289,8 @@ class FishingRuleViewModel @Inject constructor(
     fun selectRegion(regionId: Long) {
 
         // Сначала запрещаем автоматическое изменение региона.
-        regionSelectedManually = true
+        savedStateHandle[REGION_SELECTED_MANUALLY] = true
+
 
         // Отменяем определение региона, если оно выполняется.
         regionDetectionJob?.cancel()
@@ -290,7 +303,7 @@ class FishingRuleViewModel @Inject constructor(
         savedStateHandle[SELECTED_REGION_ID] = regionId
     }
 
-// --------------------------------------------------
+    // --------------------------------------------------
     // SCREEN OPEN
     // --------------------------------------------------
 
@@ -315,7 +328,8 @@ class FishingRuleViewModel @Inject constructor(
 
     fun detectCurrentRegion() {
 
-        if (regionSelectedManually) {
+        if (regionSelectedManually.value
+        ) {
             return
         }
 
@@ -342,13 +356,24 @@ class FishingRuleViewModel @Inject constructor(
                     locationProvider.getCurrentLocation()
 
                 val location = when (locationResult) {
-                    is LocationResult.Success -> locationResult
-                    else -> return@launch
+
+                    is LocationResult.Success -> {
+                        locationResult
+                    }
+
+                    else -> {
+                        errorMessage.value =
+                            "Не удалось определить местоположение. Выберите регион вручную."
+
+                        return@launch
+                    }
                 }
+
 
                 // 2. Проверяем, не выбрал ли пользователь регион.
 
-                if (regionSelectedManually ||
+                if (regionSelectedManually.value
+                    ||
                     selectedRegionId.value != null
                 ) {
                     return@launch
@@ -359,11 +384,18 @@ class FishingRuleViewModel @Inject constructor(
                 val regionName = geocoderService.getRegion(
                     lat = location.latitude,
                     lon = location.longitude
-                ) ?: return@launch
+                ) ?: run {
+                    errorMessage.value =
+                        "Не удалось определить регион по координатам."
+
+                    return@launch
+                }
+
 
                 // 4. Повторно проверяем актуальность выбора.
 
-                if (regionSelectedManually ||
+                if (regionSelectedManually.value
+                    ||
                     selectedRegionId.value != null
                 ) {
                     return@launch
@@ -380,7 +412,7 @@ class FishingRuleViewModel @Inject constructor(
 
                 if (
                     region != null &&
-                    !regionSelectedManually &&
+                    !regionSelectedManually.value &&
                     selectedRegionId.value == null
                 ) {
                     savedStateHandle[SELECTED_REGION_ID] = region.id
@@ -390,7 +422,7 @@ class FishingRuleViewModel @Inject constructor(
                 // Отмена корутины должна распространяться дальше.
                 throw e
 
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 errorMessage.value =
                     "Не удалось автоматически определить регион."
 
@@ -408,89 +440,90 @@ class FishingRuleViewModel @Inject constructor(
         }
     }
 
-// --------------------------------------------------
+    private fun launchDatabaseOperation(
+        operation: suspend () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                operation()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                errorMessage.value =
+                    "Не удалось выполнить операцию. Попробуйте ещё раз."
+            }
+        }
+    }
+
+    // --------------------------------------------------
     // DAILY ALLOWANCE CRUD
     // --------------------------------------------------
 
-    fun insertDailyAllowance(
-        allowance: DailyAllowance
-    ) {
-        viewModelScope.launch {
+    fun insertDailyAllowance(allowance: DailyAllowance) {
+        launchDatabaseOperation {
             repository.insertDailyAllowance(allowance)
         }
     }
 
-    fun updateDailyAllowance(
-        allowance: DailyAllowance
-    ) {
-        viewModelScope.launch {
+    fun updateDailyAllowance(allowance: DailyAllowance) {
+        launchDatabaseOperation {
             repository.updateDailyAllowance(allowance)
         }
     }
 
-    fun deleteDailyAllowance(
-        allowance: DailyAllowance
-    ) {
-        viewModelScope.launch {
+    fun deleteDailyAllowance(allowance: DailyAllowance) {
+        launchDatabaseOperation {
             repository.deleteDailyAllowance(allowance)
         }
     }
+
 
     // --------------------------------------------------
     // FISHING BAN CRUD
     // --------------------------------------------------
 
-    fun insertFishingBan(
-        ban: FishingBan
-    ) {
-        viewModelScope.launch {
-            regulationRepository.insertFishingBan(ban)
-        }
+fun insertFishingBan(ban: FishingBan) {
+    launchDatabaseOperation {
+        regulationRepository.insertFishingBan(ban)
     }
+}
 
-    fun updateFishingBan(
-        ban: FishingBan
-    ) {
-        viewModelScope.launch {
+    fun updateFishingBan(ban: FishingBan) {
+        launchDatabaseOperation {
             regulationRepository.updateFishingBan(ban)
         }
     }
 
-    fun deleteFishingBan(
-        ban: FishingBan
-    ) {
-        viewModelScope.launch {
+    fun deleteFishingBan(ban: FishingBan) {
+        launchDatabaseOperation {
             regulationRepository.deleteFishingBan(ban)
         }
     }
+
 
     // --------------------------------------------------
     // REGION RULE CRUD
     // --------------------------------------------------
 
-    fun insertRegionRule(
-        rule: RegionRule
-    ) {
-        viewModelScope.launch {
-            regulationRepository.insertRegionRule(rule)
+    fun insertRegionRule(rule: RegionRule) {
+        launchDatabaseOperation {
+            regulationRepository.createRegionRule(rule)
         }
     }
 
-    fun updateRegionRule(
-        rule: RegionRule
-    ) {
-        viewModelScope.launch {
+
+    fun updateRegionRule(rule: RegionRule) {
+        launchDatabaseOperation {
             regulationRepository.updateRegionRule(rule)
         }
     }
 
-    fun deleteRegionRule(
-        rule: RegionRule
-    ) {
-        viewModelScope.launch {
+    fun deleteRegionRule(rule: RegionRule) {
+        launchDatabaseOperation {
             regulationRepository.deleteRegionRule(rule)
         }
     }
+
 
     // --------------------------------------------------
     // LIFECYCLE
@@ -502,20 +535,65 @@ class FishingRuleViewModel @Inject constructor(
 
         super.onCleared()
     }
+
+    suspend fun getOverlappingRules(
+        rule: RegionRule
+    ): List<RegionRule> {
+
+        return regulationRepository.getOverlappingRules(
+            regionId = rule.regionId,
+            validFrom = rule.validFrom,
+            validUntil = rule.validUntil,
+            excludeId = rule.id
+        )
+    }
+// =========================================
+// СОЗДАНИЕ НОВОГО ПРАВИЛА
+// =========================================
+
+    fun createRegionRule(rule: RegionRule) {
+        launchDatabaseOperation {
+            regulationRepository.createRegionRule(rule)
+        }
+    }
+
+
+// =========================================
+// СОЗДАНИЕ РЕДАКЦИИ
+// =========================================
+
+    fun createRegionRuleRevision(
+        previousRule: RegionRule,
+        newRule: RegionRule
+    ) {
+        launchDatabaseOperation {
+            regulationRepository.createRegionRuleRevision(
+                previousRule = previousRule,
+                newRule = newRule
+            )
+        }
+    }
+
+
+
+
+
 }
 
 data class FishLimitUiState(
     val fishList: List<Fish> = emptyList(),
     val regionList: List<Region> = emptyList(),
-
     val selectedRegionId: Long? = null,
     val selectedDate: LocalDate = LocalDate.now(),
-    val selectedYear: Int = LocalDate.now().year,
 
-    val regionRule: RegionRule? = null,
+    // Правила на выбранную дату
+    val regionRules: List<RegionRule> = emptyList(),
+
+    // Полная история правил региона
+    val allRegionRules: List<RegionRule> = emptyList(),
+
     val dailyAllowance: List<DailyAllowance> = emptyList(),
     val fishingBans: List<FishingBan> = emptyList(),
-
     val isLoading: Boolean = false,
     val isDetectingRegion: Boolean = false,
     val errorMessage: String? = null

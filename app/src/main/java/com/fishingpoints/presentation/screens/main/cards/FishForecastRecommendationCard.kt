@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.fishingpoints.presentation.screens.main.ActivityIndicator
+import com.fishingpoints.presentation.screens.main.component.ActivityBadge
+import com.fishingpoints.presentation.screens.main.component.ActivityDescription
 import com.fishingpoints.presentation.screens.main.model.FishForecastRecommendation
 import com.fishingpoints.presentation.screens.main.model.FishTimeForecast
 
@@ -62,6 +64,16 @@ fun FishForecastRecommendationCard(
                     level = forecast.activityLevel
                 )
             }
+
+            // Биологическая активность рыбы.
+            ActivityBadge(
+                activity = forecast.feedingActivity,
+                confidence = forecast.ruleConfidence
+            )
+
+            ActivityDescription(
+                description = forecast.activityDescription
+            )
 
             Text(
                 text = "ID рыбы: ${forecast.fishId}",
@@ -193,6 +205,16 @@ fun FishTimeForecastItem(
             ActivityIndicator(
                 level = interval.activityLevel
             )
+
+            ActivityBadge(
+                activity = interval.feedingActivity,
+                confidence = interval.ruleConfidence
+            )
+
+            ActivityDescription(
+                description = interval.activityDescription
+            )
+
 
             Text(
                 text = interval.description,

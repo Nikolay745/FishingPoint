@@ -2,9 +2,11 @@ package com.fishingpoints.presentation.screens.main.model
 
 import com.fishingpoints.core.network.FishingTimeType
 import com.fishingpoints.core.network.WeatherForTime
+import java.time.LocalDate
 import java.time.LocalTime
 
 data class BestFishingTime(
+    val date: LocalDate,
     val start: LocalTime,
     val end: LocalTime,
     val activityLevel: Int,

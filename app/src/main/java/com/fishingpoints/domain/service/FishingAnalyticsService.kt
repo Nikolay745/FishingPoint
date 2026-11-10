@@ -17,7 +17,8 @@ class FishingAnalyticsService @Inject constructor(
     private val biteRatingCalculator: BiteRatingCalculator,
     private val pressureAnalyzer: PressureAnalyzer,
     private val waterTemperatureAnalyzer: WaterTemperatureAnalyzer,
-    private val fishingCalendar: FishingCalendar
+    private val fishingCalendar: FishingCalendar,
+    private val windAnalyzer: WindAnalyzer
 ) {
     fun analyzeFishingWeather(
         currentResponse: WeatherResponse,
@@ -44,6 +45,7 @@ class FishingAnalyticsService @Inject constructor(
             pressure = pressure,
             pressureTrend = pressureTrend,
             windSpeed = current.windSpeed,
+            windDirection = current.windDeg,
             cloudiness = current.clouds,
             precipitation = current.weather
                 .firstOrNull()
@@ -54,9 +56,6 @@ class FishingAnalyticsService @Inject constructor(
             weatherId = current.weather.firstOrNull()?.id ?: 0
 
         )
-
-        val season =
-            fishingCalendar.getSeason(date)
 
 
         val biteRating = biteRatingCalculator.calculate(
@@ -113,6 +112,14 @@ class FishingAnalyticsService @Inject constructor(
             else -> parts.add("⚠️ Очень сильный ветер")
         }
 
+        // Анализ направления и скорости ветра
+        val windAdvice = windAnalyzer.analyze(
+            windSpeed = weather.windSpeed,
+            windDirection = weather.windDirection
+        )
+
+        parts.add("🌬️ $windAdvice")
+
         return parts.joinToString(". ")
     }
 
@@ -121,11 +128,6 @@ class FishingAnalyticsService @Inject constructor(
     ): List<DailyFishingForecast> {
 
         return forecastResponse.list
-//            .groupBy { item ->
-//                Instant.ofEpochSecond(item.dt)
-//                    .atZone(ZoneId.systemDefault())
-//                    .toLocalDate()
-//            }
             .groupBy { item ->
                 Instant.ofEpochSecond(item.dt)
                     .atOffset(
@@ -189,6 +191,7 @@ class FishingAnalyticsService @Inject constructor(
                     pressure = pressure,
                     pressureTrend = PressureTrend.NODATA,
                     windSpeed = windSpeed,
+                    windDirection = representative.wind.deg,
                     cloudiness = cloudiness,
                     precipitation = precipitation,
                     recommendation = "",

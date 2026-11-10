@@ -3,10 +3,13 @@ package com.fishingpoints.presentation.screens.fishingRule.dialogs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -16,12 +19,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,7 +37,6 @@ import com.fishingpoints.data.local.entity.Region
 import com.fishingpoints.data.local.entity.RegionRule
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.collections.forEach
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,82 +49,172 @@ fun AddRegionRuleDialog(
     onDismiss: () -> Unit,
     onSave: (RegionRule) -> Unit
 ) {
-    var selectedRegionIdLocal by remember(rule?.id, selectedRegionId) {
+    val localDateSaver = Saver<LocalDate, String>(
+        save = { it.toString() },
+        restore = { LocalDate.parse(it) }
+    )
+
+    var selectedRegionIdLocal by rememberSaveable(
+        rule?.id,
+        selectedRegionId
+    ) {
         mutableStateOf(rule?.regionId ?: selectedRegionId)
     }
-    var validFrom by remember(rule?.id, selectedDate) {
+
+    var title by rememberSaveable(rule?.id) {
+        mutableStateOf(rule?.title ?: "")
+    }
+
+    var description by rememberSaveable(rule?.id) {
+        mutableStateOf(rule?.description ?: "")
+    }
+
+    var notes by rememberSaveable(rule?.id) {
+        mutableStateOf(rule?.notes ?: "")
+    }
+
+    var validFrom by rememberSaveable(
+        rule?.id,
+        selectedDate,
+        stateSaver = localDateSaver
+    ) {
         mutableStateOf(rule?.validFrom ?: selectedDate)
     }
 
-    var validUntil by remember(rule?.id, selectedDate) {
+    val nullableDateSaver = Saver<LocalDate?, String>(
+        save = { date ->
+            date?.toString() ?: ""
+        },
+        restore = { value ->
+            value.takeIf { it.isNotEmpty() }?.let(LocalDate::parse)
+        }
+    )
+
+
+    var validUntil by rememberSaveable(
+        rule?.id,
+        selectedDate,
+        stateSaver = nullableDateSaver
+    ) {
         mutableStateOf(rule?.validUntil)
-    }
-
-    var dailyWeightLimit by remember {
-        mutableStateOf(
-            rule?.dailyWeightLimit?.toString() ?: "5000"
-        )
-    }
-
-    var maxDailyNorms by remember {
-        mutableStateOf(
-            rule?.maxDailyNorms?.toString() ?: "2"
-        )
-    }
-
-    var notes by remember {
-        mutableStateOf(
-            rule?.notes ?: ""
-        )
-    }
-
-    var allowOversizeFish by remember {
-        mutableStateOf(
-            rule?.allowOversizeFish ?: true
-        )
     }
 
     var regionExpanded by remember {
         mutableStateOf(false)
     }
 
-    var showValidFromPicker by remember {
+    var showValidFromDialog by remember {
         mutableStateOf(false)
     }
 
-    var showValidUntilPicker by remember {
+    var showValidUntilDialog by remember {
         mutableStateOf(false)
     }
 
-    var errorMessage by remember {
+    var errorMessage by rememberSaveable(rule?.id) {
         mutableStateOf<String?>(null)
-    }
-
-    val selectedRegion = regionList.firstOrNull {
-        it.id == selectedRegionIdLocal
     }
 
     val dateFormatter = remember {
         DateTimeFormatter.ofPattern("dd.MM.yyyy")
     }
 
+    val selectedRegion = regionList.firstOrNull {
+        it.id == selectedRegionIdLocal
+    }
+
+    var dailyWeightLimit by rememberSaveable(rule?.id) {
+        mutableStateOf(rule?.dailyWeightLimit?.toString() ?: "")
+    }
+
+    var allowOversizeFish by rememberSaveable(rule?.id) {
+        mutableStateOf(rule?.allowOversizeFish)
+    }
+
+    var maxDailyNorms by rememberSaveable(rule?.id) {
+        mutableStateOf(rule?.maxDailyNorms?.toString() ?: "")
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
+
         title = {
             Text(
                 if (rule == null) {
-                    "Добавить правила"
+                    "Добавить региональное правило"
                 } else {
-                    "Редактировать правила"
+                    "Редактировать правило"
                 }
             )
         },
 
+        confirmButton = {
+            TextButton(
+                onClick = {
+
+                    val regionId = selectedRegionIdLocal
+
+                    if (regionId == null || selectedRegion == null) {
+                        errorMessage = "Выберите регион"
+                        return@TextButton
+                    }
+
+                    if (title.isBlank()) {
+                        errorMessage = "Введите название правила"
+                        return@TextButton
+                    }
+
+                    if (description.isBlank()) {
+                        errorMessage = "Введите содержание правила"
+                        return@TextButton
+                    }
+
+                    if (
+                        validUntil != null &&
+                        validUntil!!.isBefore(validFrom)
+                    ) {
+                        errorMessage =
+                            "Дата окончания не может быть раньше даты начала"
+                        return@TextButton
+                    }
+
+                    val regionRule = RegionRule(
+                        id = rule?.id ?: 0L,
+                        regionId = regionId,
+                        title = title.trim(),
+                        description = description.trim(),
+                        validFrom = validFrom,
+                        validUntil = validUntil,
+                        dailyWeightLimit = dailyWeightLimit.toIntOrNull(),
+                        allowOversizeFish = allowOversizeFish,
+                        maxDailyNorms = maxDailyNorms.toIntOrNull(),
+                        notes = notes.trim().ifBlank { null }
+                    )
+
+
+                    errorMessage = null
+
+                    onSave(regionRule)
+                }
+            ) {
+                Text(
+                    if (rule == null) "Сохранить" else "Обновить"
+                )
+            }
+        },
+
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        },
+
         text = {
             Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ОШИБКА
+
                 errorMessage?.let { error ->
                     Text(
                         text = error,
@@ -129,6 +224,7 @@ fun AddRegionRuleDialog(
                 }
 
                 // РЕГИОН
+
                 ExposedDropdownMenuBox(
                     expanded = regionExpanded,
                     onExpandedChange = {
@@ -176,45 +272,150 @@ fun AddRegionRuleDialog(
                     }
                 }
 
+                // НАЗВАНИЕ
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = {
+                        title = it
+                        errorMessage = null
+                    },
+                    label = {
+                        Text("Название правила")
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // СОДЕРЖАНИЕ
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = {
+                        description = it
+                    },
+                    label = {
+                        Text("Содержание правила")
+                    },
+                    minLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // ДОПОЛНИТЕЛЬНЫЕ ПРИМЕЧАНИЯ
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = {
+                        notes = it
+                    },
+                    label = {
+                        Text("Примечания")
+                    },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 HorizontalDivider()
 
-                // ДАТА НАЧАЛА ДЕЙСТВИЯ
-                OutlinedButton(
-                    onClick = {
-                        showValidFromPicker = true
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Действует с")
+                Text(
+                    text = "Дополнительные ограничения",
+                    style = MaterialTheme.typography.titleMedium
+                )
 
-                        Text(
-                            text = validFrom.format(dateFormatter),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                OutlinedTextField(
+                    value = dailyWeightLimit,
+                    onValueChange = {
+                        dailyWeightLimit = it.filter(Char::isDigit)
+                    },
+                    label = {
+                        Text("Суточное ограничение веса (г)")
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = maxDailyNorms,
+                    onValueChange = {
+                        maxDailyNorms = it.filter(Char::isDigit)
+                    },
+                    label = {
+                        Text("Количество суточных норм")
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Разрешение на вылов сверх установленного размера")
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = allowOversizeFish == true,
+                        onClick = {
+                            allowOversizeFish = true
+                        }
+                    )
+                    Text("Разрешён")
+
+                    Spacer(Modifier.width(12.dp))
+
+                    RadioButton(
+                        selected = allowOversizeFish == false,
+                        onClick = {
+                            allowOversizeFish = false
+                        }
+                    )
+                    Text("Запрещён")
                 }
 
-                // ДАТА ОКОНЧАНИЯ
+                TextButton(
+                    onClick = {
+                        allowOversizeFish = null
+                    }
+                ) {
+                    Text("Не указано")
+                }
+
+                HorizontalDivider()
+
+                Text(
+                    text = "Период действия",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                // НАЧАЛО ДЕЙСТВИЯ
+
                 OutlinedButton(
                     onClick = {
-                        showValidUntilPicker = true
+                        showValidFromDialog = true
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Действует до")
+                    Text(
+                        "Действует с: ${validFrom.format(dateFormatter)}"
+                    )
+                }
 
-                        Text(
-                            text = validUntil?.format(dateFormatter)
-                                ?: "Без даты окончания",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                // ОКОНЧАНИЕ ДЕЙСТВИЯ
+
+                OutlinedButton(
+                    onClick = {
+                        showValidUntilDialog = true
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Действует до: ${
+                            validUntil?.format(dateFormatter) ?: "Бессрочно"
+                        }"
+                    )
                 }
 
                 if (validUntil != null) {
@@ -227,170 +428,38 @@ fun AddRegionRuleDialog(
                         Text("Убрать дату окончания")
                     }
                 }
-
-                HorizontalDivider()
-
-                // СУТОЧНАЯ НОРМА
-                OutlinedTextField(
-                    value = dailyWeightLimit,
-                    onValueChange = {
-                        dailyWeightLimit = it
-                        errorMessage = null
-                    },
-                    label = {
-                        Text("Суточная норма (г)")
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // МАКСИМАЛЬНОЕ КОЛИЧЕСТВО НОРМ
-                OutlinedTextField(
-                    value = maxDailyNorms,
-                    onValueChange = {
-                        maxDailyNorms = it
-                        errorMessage = null
-                    },
-                    label = {
-                        Text("Максимум суточных норм")
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // РАЗРЕШЕНИЕ НА СВЕРХНОРМАТИВНУЮ РЫБУ
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = allowOversizeFish,
-                        onCheckedChange = {
-                            allowOversizeFish = it
-                        }
-                    )
-
-                    Text(
-                        text = "Разрешить 1 экземпляр сверх нормы"
-                    )
-                }
-
-                // ПРИМЕЧАНИЯ
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = {
-                        notes = it
-                    },
-                    label = {
-                        Text("Примечания")
-                    },
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val regionId = selectedRegionIdLocal
-                    if (regionId == null || selectedRegion == null) {
-                        errorMessage = "Выберите регион"
-                        return@TextButton
-                    }
-
-                    if (
-                        validUntil != null &&
-                        validUntil!!.isBefore(validFrom)
-                    ) {
-                        errorMessage =
-                            "Дата окончания не может быть раньше даты начала"
-                        return@TextButton
-                    }
-
-                    val parsedWeight = dailyWeightLimit.toIntOrNull()
-
-                    if (parsedWeight == null || parsedWeight <= 0) {
-                        errorMessage =
-                            "Суточная норма должна быть больше нуля"
-                        return@TextButton
-                    }
-
-                    val parsedMaxNorms = maxDailyNorms.toIntOrNull()
-
-                    if (parsedMaxNorms == null || parsedMaxNorms <= 0) {
-                        errorMessage =
-                            "Количество суточных норм должно быть больше нуля"
-                        return@TextButton
-                    }
-
-
-                    val regionRule = RegionRule(
-                        id = rule?.id ?: 0L,
-                        regionId = regionId,
-                        validFrom = validFrom,
-                        validUntil = validUntil,
-                        dailyWeightLimit = parsedWeight,
-                        allowOversizeFish = allowOversizeFish,
-                        maxDailyNorms = parsedMaxNorms,
-                        notes = notes.ifBlank { null }
-                    )
-
-                    onSave(regionRule)
-                }
-            ) {
-
-                Text(
-                    if (rule == null)
-                        "Сохранить"
-                    else
-                        "Обновить"
-                )
-            }
-        },
-
-        dismissButton = {
-
-            TextButton(
-                onClick = onDismiss
-            ) {
-                Text("Отмена")
             }
         }
     )
 
-// ВЫБОР ДАТЫ НАЧАЛА
-    if (showValidFromPicker) {
+    // ВЫБОР ДАТЫ НАЧАЛА
+
+    if (showValidFromDialog) {
         LocalDatePickerDialog(
             initialDate = validFrom,
             onDateSelected = { date ->
                 validFrom = date
-                showValidFromPicker = false
+                showValidFromDialog = false
                 errorMessage = null
             },
             onDismiss = {
-                showValidFromPicker = false
+                showValidFromDialog = false
             }
         )
     }
 
     // ВЫБОР ДАТЫ ОКОНЧАНИЯ
-    if (showValidUntilPicker) {
+
+    if (showValidUntilDialog) {
         LocalDatePickerDialog(
             initialDate = validUntil ?: validFrom,
             onDateSelected = { date ->
                 validUntil = date
-                showValidUntilPicker = false
+                showValidUntilDialog = false
                 errorMessage = null
             },
             onDismiss = {
-                showValidUntilPicker = false
+                showValidUntilDialog = false
             }
         )
     }

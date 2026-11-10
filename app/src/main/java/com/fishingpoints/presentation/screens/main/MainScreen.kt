@@ -29,6 +29,7 @@ import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,17 +53,14 @@ import com.fishingpoints.core.network.FishingForecast
 import com.fishingpoints.data.models.FishingWeather
 import com.fishingpoints.domain.permissions.LocationPermissionScreen
 import com.fishingpoints.domain.permissions.rememberLocationPermissionState
+import com.fishingpoints.domain.recommendation.adviceToDay.ForecastConfidence
+import com.fishingpoints.domain.recommendation.adviceToDay.ForecastConfidenceLevel
 import com.fishingpoints.presentation.screens.main.cards.AdditionalInformationCard
 import com.fishingpoints.presentation.screens.main.cards.BestTimesCard
-import com.fishingpoints.presentation.screens.main.cards.ConditionsTextCard
 import com.fishingpoints.presentation.screens.main.cards.FishRecommendationCard
+import com.fishingpoints.presentation.screens.main.cards.FishingConditionsCard
 import com.fishingpoints.presentation.screens.main.cards.FishingForecastCard
-import com.fishingpoints.presentation.screens.main.cards.LunarCard
-import com.fishingpoints.presentation.screens.main.cards.RecommendationsCard
-import com.fishingpoints.presentation.screens.main.cards.TimeSeasonCard
-import com.fishingpoints.presentation.screens.main.cards.TipCard
 import com.fishingpoints.presentation.screens.main.cards.WeatherCard
-import com.fishingpoints.presentation.screens.main.component.FishingTimesChart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -210,38 +209,18 @@ fun MainScreen(
                             temperatureUnit = temperatureUnit
                         )
                     }
-//                        // Лунная информация
-//                        uiState.lunarInfo?.let { lunar ->
-//                            item { LunarCard(lunarInfo = lunar) }
-//                        }
-//                        // Время и сезон
-//                        item {
-//                            TimeSeasonCard(
-//                                timeRecommendation = uiState.dailyTips.timeRecommendation,
-//                                seasonRecommendation = uiState.dailyTips.seasonRecommendation
-//                            )
-//                        }
-//
-//                        // Все общие временные интервалы.
-//                        item {
-//                            FishingTimesChart(
-//                                times = uiState.allFishingTimes
-//                            )
-//                        }
+                        // 3. Характеристика сегодняшнего дня
+                        forecast?.let { fishingForecast ->
+                            uiState.weather?.let { weather ->
+                                item {
+                                    FishingConditionsCard(
+                                        forecast = fishingForecast,
+                                        weather = weather
+                                    )
+                                }
+                            }
+                        }
 
-                        // Лучшее время для рыбалки
-//                        forecast?.let { fishingForecast ->
-//                            uiState.weather?.let { weather ->
-//                                item {
-//                                    ConditionsTextCard(
-//                                        text = buildConditionsText(
-//                                            forecast = fishingForecast,
-//                                            weather = weather
-//                                        )
-//                                    )
-//                                }
-//                            }
-//                        }
                         // 3. Лучшее время для рыбалки
                         forecast?.let { fishingForecast ->
                             if (fishingForecast.bestTimes.isNotEmpty()) {
@@ -252,24 +231,6 @@ fun MainScreen(
                                 }
                             }
                         }
-
-                        // Рекомендации
-//                        item {
-//                            RecommendationsCard(
-//                                tackleRecommendations = uiState.dailyTips.tackleRecommendations,
-//                                baitRecommendations = uiState.dailyTips.baitRecommendations,
-//                                groundbaitRecommendation = uiState.dailyTips.groundbaitRecommendation,
-//                                attractantRecommendation = uiState.dailyTips.attractantRecommendation
-//                            )
-//                        }
-                        // Совет дня
-//                        if (uiState.dailyTips.tipOfTheDay.isNotBlank()) {
-//                            item {
-//                                TipCard(
-//                                    tip = uiState.dailyTips.tipOfTheDay
-//                                )
-//                            }
-//                        }
 
                         // 4. Рекомендуемые рыбы
                         if (uiState.recommendedFish.isNotEmpty()) {
@@ -288,8 +249,6 @@ fun MainScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-
-
 
                             items(
                                 items = uiState.recommendedFish,
@@ -315,7 +274,7 @@ fun MainScreen(
                     }
                     }
                 }
-//            }
+
 
             // LOADING OVERLAY
             if (isLoading) {
@@ -487,7 +446,7 @@ fun ErrorOverlay(
     }
 }
 
-
+// характеристика сегодняшнего дня
 fun buildConditionsText(
     forecast: FishingForecast,
     weather: FishingWeather
@@ -501,5 +460,70 @@ fun buildConditionsText(
         appendLine("📅 Сезон: ${forecast.season.title}")
         appendLine("🎣 Клёв: %.1f/5".format(Locale.US,weather.biteRating))
         appendLine("📊 Активность: ${forecast.activityLevel}/10")
+    }
+}
+
+@Composable
+fun ForecastConfidenceCard(
+    confidence: ForecastConfidence
+) {
+
+    val color = when (confidence.level) {
+
+        ForecastConfidenceLevel.VERY_HIGH ->
+            Color(0xFF2E7D32)
+
+        ForecastConfidenceLevel.HIGH ->
+            Color(0xFF66BB6A)
+
+        ForecastConfidenceLevel.MEDIUM ->
+            Color(0xFFFFA726)
+
+        ForecastConfidenceLevel.LOW ->
+            Color(0xFFEF6C00)
+
+        ForecastConfidenceLevel.VERY_LOW ->
+            Color(0xFFC62828)
+    }
+
+    val title = when (confidence.level) {
+        ForecastConfidenceLevel.VERY_HIGH -> "Очень высокая"
+        ForecastConfidenceLevel.HIGH -> "Высокая"
+        ForecastConfidenceLevel.MEDIUM -> "Средняя"
+        ForecastConfidenceLevel.LOW -> "Низкая"
+        ForecastConfidenceLevel.VERY_LOW -> "Очень низкая"
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text("Достоверность прогноза")
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "$title — ${confidence.score}%",
+                color = color
+            )
+
+            LinearProgressIndicator(
+                progress = {
+                    confidence.score / 100f
+                },
+                modifier = Modifier.fillMaxWidth(),
+                color = color
+            )
+
+            confidence.reasons.forEach { reason ->
+                Text(
+                    text = "• $reason",
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+        }
     }
 }

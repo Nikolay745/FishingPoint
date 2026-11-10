@@ -28,6 +28,7 @@ class BiteRatingCalculator @Inject constructor() {
             waterTemperature = weather.waterTemperature,
             pressureTrend = weather.pressureTrend,
             windSpeed = weather.windSpeed,
+            windDirection = weather.windDirection,
             cloudiness = weather.cloudiness,
             precipitation = weather.precipitation
         )
@@ -50,6 +51,8 @@ class BiteRatingCalculator @Inject constructor() {
             waterTemperature = waterTemperature,
             pressureTrend = weather.pressureTrend,
             windSpeed = weather.windSpeed,
+            windDirection = weather.windDirection,
+
             cloudiness = weather.cloudiness,
             precipitation = weather.precipitation
         )
@@ -73,6 +76,7 @@ class BiteRatingCalculator @Inject constructor() {
         waterTemperature: Double?,
         pressureTrend: PressureTrend,
         windSpeed: Double,
+        windDirection: Int,
         cloudiness: Int,
         precipitation: String
     ): Double {
@@ -94,6 +98,12 @@ class BiteRatingCalculator @Inject constructor() {
         score += calculateWindEffect(
             windSpeed
         )
+
+        score += calculateWindDirectionEffect(
+            windDirection = windDirection,
+            windSpeed = windSpeed
+        )
+
 
         score += calculateCloudinessEffect(
             cloudiness
@@ -122,7 +132,6 @@ class BiteRatingCalculator @Inject constructor() {
 
             waterTemperature < 5.0 -> -0.8
             waterTemperature < 10.0 -> -0.3
-
             waterTemperature <= 20.0 -> 0.5
             waterTemperature <= 24.0 -> 0.2
             waterTemperature <= 28.0 -> -0.3
@@ -185,6 +194,40 @@ class BiteRatingCalculator @Inject constructor() {
             else -> -0.8
         }
     }
+
+    // ============================================================
+// НАПРАВЛЕНИЕ ВЕТРА
+// ============================================================
+
+    private fun calculateWindDirectionEffect(
+        windDirection: Int,
+        windSpeed: Double
+    ): Double {
+
+        // При практически полном штиле направление
+        // ветра практически не имеет значения.
+        if (windSpeed < 2.0) return 0.0
+
+        val direction = ((windDirection % 360) + 360) % 360
+
+        return when (direction) {
+
+            // Северный и северо-восточный
+            in 338..359, in 0..67 -> -0.05
+
+            // Восточный и юго-восточный
+            in 68..157 -> -0.05
+
+            // Южный и юго-западный
+            in 158..247 -> 0.05
+
+            // Западный и северо-западный
+            in 248..337 -> 0.05
+
+            else -> 0.0
+        }
+    }
+
 
     // ============================================================
     // ОБЛАЧНОСТЬ

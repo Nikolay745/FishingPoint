@@ -3,6 +3,8 @@ package com.fishingpoints.data.local.database
 import androidx.room.TypeConverter
 import com.fishingpoints.data.local.enums.BaitType
 import com.fishingpoints.data.local.enums.FeedingActivity
+import com.fishingpoints.data.local.enums.RuleConfidence
+import com.fishingpoints.data.local.enums.RuleSource
 import com.fishingpoints.data.local.enums.Season
 import com.fishingpoints.data.local.enums.TackleType
 import com.fishingpoints.data.local.enums.TimeOfDay
@@ -51,27 +53,47 @@ class Converters {
 
 
     // TimeOfDay
+//    @TypeConverter
+//    fun fromTimeOfDay(value: String): TimeOfDay {
+//        return TimeOfDay.valueOf(value)
+//    }
+//
+//    @TypeConverter
+//    fun timeOfDayToString(timeOfDay: TimeOfDay): String {
+//        return timeOfDay.name
+//    }
     @TypeConverter
-    fun fromTimeOfDay(value: String): TimeOfDay {
-        return TimeOfDay.valueOf(value)
+    fun fromTimeOfDay(value: TimeOfDay?): String? {
+        return value?.name
     }
 
     @TypeConverter
-    fun timeOfDayToString(timeOfDay: TimeOfDay): String {
-        return timeOfDay.name
+    fun timeOfDayToString(value: String?): TimeOfDay? {
+        return value?.let { TimeOfDay.valueOf(it) }
     }
+
 
     // FeedingActivity
 
-    @TypeConverter
-    fun fromFeedingActivity(value: String): FeedingActivity {
-        return FeedingActivity.valueOf(value)
-    }
+//    @TypeConverter
+//    fun fromFeedingActivity(value: String): FeedingActivity {
+//        return FeedingActivity.valueOf(value)
+//    }
+//
+//    @TypeConverter
+//    fun feedingActivityToString(activity: FeedingActivity): String {
+//        return activity.name
+//    }
+@TypeConverter
+fun fromFeedingActivity(value: FeedingActivity?): String? {
+    return value?.name
+}
 
     @TypeConverter
-    fun feedingActivityToString(activity: FeedingActivity): String {
-        return activity.name
+    fun feedingActivityToString(value: String?): FeedingActivity? {
+        return value?.let { FeedingActivity.valueOf(it) }
     }
+
 
     @TypeConverter
     fun fromLocalDate(date: LocalDate?): String? {
@@ -116,5 +138,24 @@ class Converters {
     fun toZoneId(value: String?): ZoneId? {
         return value?.let(ZoneId::of)
     }
+
+    @TypeConverter
+    fun fromRuleConfidence(value: RuleConfidence?): String? =
+        value?.name
+
+    @TypeConverter
+    fun toRuleConfidence(value: String?): RuleConfidence? =
+        value?.let { RuleConfidence.valueOf(it) }
+
+
+    @TypeConverter
+    fun fromRuleSource(value: RuleSource?): String? =
+        value?.name
+
+    @TypeConverter
+    fun toRuleSource(value: String?): RuleSource? =
+        value?.let { RuleSource.valueOf(it) }
+
+
 
 }

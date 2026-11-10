@@ -45,13 +45,11 @@ data class MainUiState(
     val weather: FishingWeather? = null,
 
     // =========================================
-// Прогноз погоды на 5 дней
-// =========================================
+    // Прогноз погоды на 5 дней
+    // =========================================
 
     val dailyFishingForecast: List<DailyFishingForecast> = emptyList(),
-
     val isDailyForecastLoading: Boolean = false,
-
     val dailyForecastError: String? = null,
 
 
@@ -60,9 +58,7 @@ data class MainUiState(
     // =========================================
 
     val fishingForecast: FishingForecast? = null,
-
     val isFishingForecastLoading: Boolean = false,
-
     val fishingForecastError: String? = null,
 
     // =========================================

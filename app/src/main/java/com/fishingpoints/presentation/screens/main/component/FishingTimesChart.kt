@@ -54,7 +54,7 @@ fun FishingTimesChart(
                 Column {
 
                     Text(
-                        text = "Прогноз клёва",
+                        text = "Прогноз клёва сегодня",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )

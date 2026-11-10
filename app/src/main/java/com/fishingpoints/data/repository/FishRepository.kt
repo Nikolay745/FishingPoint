@@ -165,25 +165,31 @@ class FishRepository(
 // ---------------------------------------------------------
 // РЕКОМЕНДАЦИИ
 // ---------------------------------------------------------
+suspend fun getRecommendedFish(
+    season: Season,
+    timeOfDay: TimeOfDay,
+    weather: FishingWeather,
+    lunarInfo: LunarInfo
+): List<Fish> {
 
-    suspend fun getRecommendedFish(
-        season: Season,
-        timeOfDay: TimeOfDay,
-        weather: FishingWeather,
-        lunarInfo: LunarInfo
-    ): List<Fish> {
+    val candidates = fishDao
+        .getFilteredFish(
+            query = "",
+            season = season,
+            timeOfDay = timeOfDay
+        )
+        .first()
 
-        // Пока учитываются только сезон и время суток.
-        // Weather и lunarInfo можно использовать
-        // при реализации полноценного алгоритма рекомендаций.
-        return fishDao
-            .getFilteredFish(
-                query = "",
-                season = season,
-                timeOfDay = timeOfDay
-            )
-            .first()
+    return candidates.filter { fish ->
+
+        isTemperatureSuitable(
+            fish = fish,
+            waterTemperature = weather.waterTemperature
+        )
     }
+}
+
+
 
 
 // ---------------------------------------------------------
@@ -376,6 +382,27 @@ class FishRepository(
         val feedIds: List<Long>
     )
 
+    private fun isTemperatureSuitable(
+        fish: Fish,
+        waterTemperature: Double?
+    ): Boolean {
+
+        // Неизвестная температура.
+        if (waterTemperature == null || !waterTemperature.isFinite()) {
+            return true
+        }
+
+        val min = fish.temperatureMin
+        val max = fish.temperatureMax
+
+        // Температурные предпочтения не заданы.
+        if (min == null && max == null) {
+            return true
+        }
+
+        return (min == null || waterTemperature >= min) &&
+                (max == null || waterTemperature <= max)
+    }
 
 
 }

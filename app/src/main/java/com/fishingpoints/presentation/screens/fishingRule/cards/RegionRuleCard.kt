@@ -1,24 +1,23 @@
 package com.fishingpoints.presentation.screens.fishingRule.cards
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,154 +25,253 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fishingpoints.data.local.entity.RegionRule
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
-@Composable
-fun RegionRuleCard(
+@Composable fun RegionRuleCard(
     rule: RegionRule,
+    selectedDate: LocalDate,
     onEdit: () -> Unit,
+    onCreateRevision: () -> Unit,
     onDelete: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val weightText = remember(rule.dailyWeightLimit) {
-        if (rule.dailyWeightLimit > 0) {
-            "${rule.dailyWeightLimit / 1000f} кг"
-        } else {
-            "Норма не задана"
-        }
+
+    val formatter = remember {
+        DateTimeFormatter.ofPattern("dd.MM.yyyy")
     }
+
+    val isActive = !selectedDate.isBefore(rule.validFrom) &&
+            (rule.validUntil == null ||
+                    !selectedDate.isAfter(rule.validUntil))
+
+
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // НАЗВАНИЕ
+
+            Text(
+                text = rule.title,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            HorizontalDivider()
+
+            Surface(
+                color = if (isActive) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
-                    text = "Региональные правила",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Box {
-                    IconButton(
-                        onClick = { expanded = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Дополнительные действия"
-                        )
+                    text = if (isActive) {
+                        "Действует"
+                    } else {
+                        "Не действует на выбранную дату"
+                    },
+                    modifier = Modifier.padding(
+                        horizontal = 10.dp,
+                        vertical = 5.dp
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isActive) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     }
-
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-                        }
-                    ) {
-
-                        DropdownMenuItem(
-                            text = {
-                                Text("Редактировать")
-                            },
-                            onClick = {
-                                expanded = false
-                                onEdit()
-                            }
-                        )
-
-                        DropdownMenuItem(
-                            text = {
-                                Text("Удалить")
-                            },
-                            onClick = {
-                                expanded = false
-                                showDeleteDialog = true
-                            }
-                        )
-                    }
-                }
-            }
-
-            Text(text = "Суточная норма: $weightText")
-
-            if (rule.allowOversizeFish) {
-
-                Spacer(
-                    modifier = Modifier.height(6.dp)
-                )
-
-                Text(
-                    text = "Разрешён 1 экземпляр сверх нормы",
-                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
-            Spacer(
-                modifier = Modifier.height(6.dp)
+
+            // СОДЕРЖАНИЕ
+
+            Text(
+                text = rule.description,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            HorizontalDivider()
+
+            // ПЕРИОД ДЕЙСТВИЯ
+
+            Text(
+                text = "Период действия",
+                style = MaterialTheme.typography.titleSmall
             )
 
             Text(
-                text = "Максимум: ${rule.maxDailyNorms} суточных норм",
-                style = MaterialTheme.typography.bodyMedium
+                text = "С: ${rule.validFrom.format(formatter)}",
+                style = MaterialTheme.typography.bodySmall
             )
-            rule.notes
-                ?.takeIf { it.isNotBlank() }
-                ?.let { notes ->
 
-                    Spacer(
-                        modifier = Modifier.height(12.dp)
-                    )
+            Text(
+                text = "До: ${
+                    rule.validUntil?.format(formatter) ?: "Бессрочно"
+                }",
+                style = MaterialTheme.typography.bodySmall
+            )
 
+            // ДОПОЛНИТЕЛЬНЫЕ ОГРАНИЧЕНИЯ
+
+            if (
+                rule.dailyWeightLimit != null ||
+                rule.allowOversizeFish != null ||
+                rule.maxDailyNorms != null
+            ) {
+
+                HorizontalDivider()
+
+                Text(
+                    text = "Дополнительные ограничения",
+                    style = MaterialTheme.typography.titleSmall
+                )
+
+                rule.dailyWeightLimit?.let { weight ->
                     Text(
-                        text = notes,
-                        style = MaterialTheme.typography.bodySmall
+                        text = "Суточный вес: $weight г"
                     )
                 }
+
+                rule.maxDailyNorms?.let { norms ->
+                    Text(
+                        text = "Количество суточных норм: $norms"
+                    )
+                }
+
+                rule.allowOversizeFish?.let { allowed ->
+                    Text(
+                        text = if (allowed) {
+                            "Вылов сверх установленного размера разрешён"
+                        } else {
+                            "Вылов сверх установленного размера запрещён"
+                        },
+                        color = if (allowed) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
+                    )
+                }
+            }
+
+            // ПРИМЕЧАНИЯ
+
+            rule.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+
+                HorizontalDivider()
+
+                Text(
+                    text = "Примечания",
+                    style = MaterialTheme.typography.titleSmall
+                )
+
+                Text(
+                    text = notes,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            // КНОПКИ УПРАВЛЕНИЯ
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+
+                IconButton(
+                    onClick = onEdit
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Редактировать правило"
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        showDeleteDialog = true
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Удалить правило",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                IconButton(
+                    onClick = onCreateRevision
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "Создать новую редакцию"
+                    )
+                }
+
+
+            }
         }
     }
 
-    // Диалог подтверждения удаления
+// ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ
+
     if (showDeleteDialog) {
+
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Удалить запись?") },
-            text = {
-                Text("Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.")
+            onDismissRequest = {
+                showDeleteDialog = false
             },
+
+            title = {
+                Text("Удалить правило?")
+            },
+
+            text = {
+                Text(
+                    "Правило «${rule.title}» будет удалено без возможности восстановления."
+                )
+            },
+
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDelete()
                         showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+                        onDelete()
+                    }
                 ) {
-                    Text("Удалить")
+                    Text(
+                        "Удалить",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
+
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                    }
+                ) {
                     Text("Отмена")
                 }
             }
         )
     }
+
 
 }
